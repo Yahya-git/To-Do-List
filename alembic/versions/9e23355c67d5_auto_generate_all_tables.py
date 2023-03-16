@@ -1,10 +1,10 @@
 # trunk-ignore(ruff/D400)
 # trunk-ignore(ruff/D415)
-"""empty message
+"""auto-generate all tables
 
-Revision ID: 34eef649befb
+Revision ID: 9e23355c67d5
 Revises: 
-Create Date: 2023-03-16 11:21:19.246419
+Create Date: 2023-03-16 13:08:12.068760
 
 """
 import sqlalchemy as sa
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "34eef649befb"
+revision = "9e23355c67d5"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -29,13 +29,13 @@ def upgrade() -> None:
         sa.Column("last_name", sa.String(), nullable=True),
         sa.Column(
             "created_at",
-            sa.TIMESTAMP(),
+            sa.TIMESTAMP(timezone=True),
             server_default=sa.text("NOW()"),
             nullable=False,
         ),
         sa.Column(
             "updated_at",
-            sa.TIMESTAMP(),
+            sa.TIMESTAMP(timezone=True),
             server_default=sa.text("NOW()"),
             nullable=False,
         ),
@@ -50,18 +50,18 @@ def upgrade() -> None:
         sa.Column("description", sa.String(), nullable=True),
         sa.Column(
             "created_at",
-            sa.TIMESTAMP(),
+            sa.TIMESTAMP(timezone=True),
             server_default=sa.text("NOW()"),
             nullable=False,
         ),
         sa.Column(
             "updated_at",
-            sa.TIMESTAMP(),
+            sa.TIMESTAMP(timezone=True),
             server_default=sa.text("NOW()"),
             nullable=False,
         ),
-        sa.Column("due_date", sa.TIMESTAMP(), nullable=True),
-        sa.Column("completed_at", sa.TIMESTAMP(), nullable=True),
+        sa.Column("due_date", sa.TIMESTAMP(timezone=True), nullable=True),
+        sa.Column("completed_at", sa.TIMESTAMP(timezone=True), nullable=True),
         sa.Column("is_completed", sa.Boolean(), server_default="FALSE", nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
