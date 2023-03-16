@@ -16,15 +16,6 @@ lint:
     - prettier@2.8.4
     - ruff@0.0.256
     - yamllint@1.29.0
-    - codespell
-    - cspell
-    - autopep8
-    - bandit
-    - flake8
-    - mypy
-    - pylint
-    - semgrep
-    - yapf
 runtimes:
   enabled:
     - go@1.19.5
