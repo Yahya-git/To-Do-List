@@ -28,8 +28,8 @@ class UserUpdate(UserBase):
 class User(BaseModel):
     id: int
     email: EmailStr
-    first_name: str
-    last_name: str
+    first_name: Optional[str]
+    last_name: Optional[str]
     created_at: datetime
     updated_at: datetime
 

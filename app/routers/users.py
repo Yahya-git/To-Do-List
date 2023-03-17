@@ -63,7 +63,9 @@ async def create_user(user: schemas_users.UserCreate, db: Session = Depends(get_
     "/{id}", status_code=status.HTTP_202_ACCEPTED, response_model=schemas_users.User
 )
 # trunk-ignore(ruff/B008)
-def update_user(id: int, user: schemas_users.UserUpdate, db: Session = Depends(get_db)):
+async def update_user(
+    id: int, user: schemas_users.UserUpdate, db: Session = Depends(get_db)
+):
     user_query = db.query(models.User).filter(models.User.id == id)
     update_user = user_query.first()
     if not update_user:
@@ -75,6 +77,26 @@ def update_user(id: int, user: schemas_users.UserUpdate, db: Session = Depends(g
         update_data = {"updated_at": datetime.now()}
         if user.email:
             update_data["email"] = user.email
+
+            token = randint(100000, 999999)
+            verification_token = models.Verification(
+                user_id=update_user.id,
+                token=token,
+                expires_at=datetime.now() + timedelta(hours=24),
+            )
+
+            db.add(verification_token)
+            db.commit()
+            db.refresh(verification_token)
+
+            verification_url = f"{settings.url}/users/verify-email?token={token}"
+            await send_mail(
+                email=user.email,
+                link=verification_url,
+                subject_template="Verify Email",
+                template=f"Click the following link to verify your email: {verification_url}",
+            )
+
         if user.first_name:
             update_data["first_name"] = user.first_name
         if user.last_name:
