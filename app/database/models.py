@@ -27,8 +27,10 @@ class User(Base):
     updated_at = Column(
         TIMESTAMP(timezone=True), nullable=False, server_default=text("NOW()")
     )
+    is_verified = Column(Boolean, nullable=False, server_default=text("FALSE"))
 
     tasks = relationship("Task", back_populates="owner")
+    verifications = relationship("Verification", back_populates="tokens")
 
 
 class Task(Base):
@@ -64,3 +66,19 @@ class Attachment(Base):
     )
 
     attachment = relationship("Task", back_populates="attachments")
+
+
+class Verification(Base):
+    __tablename__ = "verifications"
+
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+        nullable=False,
+        index=True,
+    )
+    token = Column(Integer, nullable=False, unique=True)
+    expires_at = Column(TIMESTAMP(timezone=True), nullable=False)
+
+    tokens = relationship("User", back_populates="verifications")
