@@ -3,7 +3,10 @@ from random import randint
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+
+from app import oauth2
 
 from .. import schemas_users, utils
 from ..config import settings
@@ -62,9 +65,11 @@ async def create_user(user: schemas_users.UserCreate, db: Session = Depends(get_
 @router.patch(
     "/{id}", status_code=status.HTTP_202_ACCEPTED, response_model=schemas_users.User
 )
-# trunk-ignore(ruff/B008)
 async def update_user(
-    id: int, user: schemas_users.UserUpdate, db: Session = Depends(get_db)
+    id: int,
+    user: schemas_users.UserUpdate,
+    # trunk-ignore(ruff/B008)
+    db: Session = Depends(get_db),
 ):
     user_query = db.query(models.User).filter(models.User.id == id)
     update_user = user_query.first()
@@ -76,6 +81,11 @@ async def update_user(
     else:
         update_data = {"updated_at": datetime.now()}
         if user.email:
+            if user.email == update_user.email:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f'{"the new email address cannot be the same as the current email address"}',
+                )
             update_data["email"] = user.email
 
             token = randint(100000, 999999)
@@ -132,3 +142,33 @@ def verify_email(token: int, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user)
     return {"message": "email verified"}
+
+
+@router.post("/login")
+def login(
+    # trunk-ignore(ruff/B008)
+    user_credentials: OAuth2PasswordRequestForm = Depends(),
+    # trunk-ignore(ruff/B008)
+    db: Session = Depends(get_db),
+):
+    user = (
+        db.query(models.User)
+        .filter(models.User.email == user_credentials.username)
+        .first()
+    )
+    if user.is_verified is False:
+        raise HTTPException(
+            status_code=status.HTTP_412_PRECONDITION_FAILED,
+            detail=f'{"kindly verify your email before trying to login"}',
+        )
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=f'{"invalid credentials"}'
+        )
+    if not utils.verify(user_credentials.password, user.password):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=f'{"invalid credentials"}'
+        )
+    access_token = oauth2.create_access_token(data={"user_id": user.id})
+
+    return {"access_token": access_token, "token_type": "bearer"}

@@ -11,13 +11,13 @@ class UserBase(BaseModel):
     last_name: Optional[str]
 
 
-class UserCreate(UserBase):
+class UserCreate(BaseModel):
     password: str
     # created_at: datetime
     # updated_at: datetime
 
 
-class UserUpdate(UserBase):
+class UserUpdate(BaseModel):
     email: Optional[EmailStr]
     first_name: Optional[str]
     last_name: Optional[str]
@@ -25,11 +25,8 @@ class UserUpdate(UserBase):
     updated_at: Optional[datetime]
 
 
-class User(BaseModel):
+class User(UserBase):
     id: int
-    email: EmailStr
-    first_name: Optional[str]
-    last_name: Optional[str]
     created_at: datetime
     updated_at: datetime
 
