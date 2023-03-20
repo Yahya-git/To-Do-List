@@ -62,9 +62,11 @@ async def create_user(user: schemas_users.UserCreate, db: Session = Depends(get_
 @router.patch(
     "/{id}", status_code=status.HTTP_202_ACCEPTED, response_model=schemas_users.User
 )
-# trunk-ignore(ruff/B008)
 async def update_user(
-    id: int, user: schemas_users.UserUpdate, db: Session = Depends(get_db)
+    id: int,
+    user: schemas_users.UserUpdate,
+    # trunk-ignore(ruff/B008)
+    db: Session = Depends(get_db),
 ):
     user_query = db.query(models.User).filter(models.User.id == id)
     update_user = user_query.first()
