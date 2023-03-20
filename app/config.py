@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     db_hostname: str
     db_port: str
     db_name: str
+    secret_key: str
+    algorithm: str
+    access_token_expire_time: int
     mail_username: str
     mail_password: str
     mail_from: str
