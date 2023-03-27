@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     mail_tls: bool
     mail_ssl: bool
     use_credentials: bool
+    google_client_id: str
+    google_client_secret: str
+    redirect_url: str
 
     class Config:
         env_file = ".env"
