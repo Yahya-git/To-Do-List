@@ -80,12 +80,12 @@ def login_app_google(
 
 
 # User Google Login Endpoint
-@router.get("/google/login")
+@router.get("/login/google")
 async def login_google():
     return await utils.google_sso.get_login_redirect()
 
 
-@router.get("/google/callback", status_code=status.HTTP_202_ACCEPTED)
+@router.get("/login/google/callback", status_code=status.HTTP_202_ACCEPTED)
 # trunk-ignore(ruff/B008)
 async def callback_google(request: Request, db: Session = Depends(get_db)):
     user = await utils.google_sso.verify_and_process(request)
