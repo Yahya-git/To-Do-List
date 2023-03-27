@@ -31,6 +31,7 @@ class User(Base):
         onupdate=text("NOW()"),
     )
     is_verified = Column(Boolean, nullable=False, server_default=text("FALSE"))
+    is_oauth = Column(Boolean, server_default=text("FALSE"))
 
     tasks = relationship("Task", back_populates="owner")
     verifications = relationship("Verification", back_populates="tokens")
