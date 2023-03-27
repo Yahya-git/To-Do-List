@@ -25,7 +25,10 @@ class User(Base):
         TIMESTAMP(timezone=True), nullable=False, server_default=text("NOW()")
     )
     updated_at = Column(
-        TIMESTAMP(timezone=True), nullable=False, server_default=text("NOW()")
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+        onupdate=text("NOW()"),
     )
     is_verified = Column(Boolean, nullable=False, server_default=text("FALSE"))
 
@@ -43,7 +46,10 @@ class Task(Base):
         TIMESTAMP(timezone=True), nullable=False, server_default=text("NOW()")
     )
     updated_at = Column(
-        TIMESTAMP(timezone=True), nullable=False, server_default=text("NOW()")
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+        onupdate=text("NOW()"),
     )
     due_date = Column(TIMESTAMP(timezone=True))
     completed_at = Column(TIMESTAMP(timezone=True))
