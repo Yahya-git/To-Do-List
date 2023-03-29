@@ -19,16 +19,17 @@ now_local = datetime.now(local_tz)
 
 router = APIRouter(tags=["Auth"])
 
+get_db_session = Depends(get_db)
+Depend = Depends()
+
 
 # User Login Endpoint
 @router.post(
     "/login", status_code=status.HTTP_202_ACCEPTED, response_model=schemas_misc.Token
 )
 def login(
-    # trunk-ignore(ruff/B008)
-    user_credentials: OAuth2PasswordRequestForm = Depends(),
-    # trunk-ignore(ruff/B008)
-    db: Session = Depends(get_db),
+    user_credentials: OAuth2PasswordRequestForm = Depend,
+    db: Session = get_db_session,
 ):
     user = (
         db.query(models.User)
@@ -54,8 +55,7 @@ def login(
 
 def oauth_login(
     user_credentials: dict,
-    # trunk-ignore(ruff/B008)
-    db: Session = Depends(get_db),
+    db: Session = get_db_session,
 ):
     user = (
         db.query(models.User)
@@ -73,8 +73,7 @@ async def login_google():
 
 
 @router.get("/login/google/callback", status_code=status.HTTP_202_ACCEPTED)
-# trunk-ignore(ruff/B008)
-async def callback_google(request: Request, db: Session = Depends(get_db)):
+async def callback_google(request: Request, db: Session = get_db_session):
     user = await utils.google_sso.verify_and_process(request)
     user_data = {
         "email": user.email,
