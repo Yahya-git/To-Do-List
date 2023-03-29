@@ -62,19 +62,6 @@ def login_app_google(
         .filter(models.User.email == user_credentials["email"])
         .first()
     )
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail=f'{"invalid credentials"}'
-        )
-    if user.is_verified is False:
-        raise HTTPException(
-            status_code=status.HTTP_412_PRECONDITION_FAILED,
-            detail=f'{"kindly verify your email before trying to login"}',
-        )
-    if not utils.verify(user_credentials["password"], user.password):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail=f'{"invalid credentials"}'
-        )
     access_token = utils.create_access_token(data={"user_id": user.id})
     return {"access_token": access_token, "token_type": "bearer"}
 
