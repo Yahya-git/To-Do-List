@@ -53,8 +53,6 @@ def test_user(client):
 def test_user_update(client):
     user_data = {"email": "yahya.19of99@gmail.com", "password": "hello"}
     response = client.post("/users/", json=user_data)
-    models.Verification.__table__.drop(bind=engine)
-    Base.metadata.create_all(bind=engine)
     assert response.status_code == 201
     user = response.json()
     user["password"] = user_data["password"]
@@ -62,13 +60,14 @@ def test_user_update(client):
 
 
 @pytest.fixture
-def test_user_login(client):
+def test_user_login(client, session):
     user_data = {"email": "yahya.19of99@gmail.com", "password": "hello"}
     response = client.post("/users/", json=user_data)
-    models.Verification.__table__.drop(bind=engine)
-    Base.metadata.create_all(bind=engine)
-    models.User.is_verified = True
     assert response.status_code == 201
     user = response.json()
+    session.query(models.User).filter(models.User.email == user_data["email"]).update(
+        {"is_verified": True}
+    )
+    session.commit()
     user["password"] = user_data["password"]
     return schemas_users.UserCreate(**user)
