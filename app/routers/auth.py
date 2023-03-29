@@ -11,7 +11,7 @@ from app.schemas import schemas_misc, schemas_users
 
 from ..database import models
 from ..database.database import get_db
-from .users import check_user_email, create_new_user
+from .users import check_email, create_new_user
 
 local_tz = ZoneInfo("Asia/Karachi")
 now_local = datetime.now(local_tz)
@@ -39,7 +39,7 @@ def login(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail=f'{"invalid credentials"}'
         )
-    if user.is_verified is False:
+    if not user.is_verified:
         raise HTTPException(
             status_code=status.HTTP_412_PRECONDITION_FAILED,
             detail=f'{"kindly verify your email before trying to login"}',
@@ -52,7 +52,7 @@ def login(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-def login_app_google(
+def oauth_login(
     user_credentials: dict,
     # trunk-ignore(ruff/B008)
     db: Session = Depends(get_db),
@@ -67,7 +67,7 @@ def login_app_google(
 
 
 # User Google Login Endpoint
-@router.get("/login/google")
+@router.get("/login/oauth")
 async def login_google():
     return await utils.google_sso.get_login_redirect()
 
@@ -86,9 +86,9 @@ async def callback_google(request: Request, db: Session = Depends(get_db)):
     oauth_check = (
         db.query(models.User).filter(models.User.email == oauth_user.email).first()
     )
-    if check_user_email(oauth_user, db=db) and oauth_check.is_oauth is True:
+    if check_email(oauth_user, db=db) and oauth_check.is_oauth is True:
         data: dict = {"email": oauth_user.email, "password": oauth_user.password}
-        access_token = login_app_google(user_credentials=data, db=db)
+        access_token = oauth_login(user_credentials=data, db=db)
         return access_token
     try:
         new_oauth_user = create_new_user(oauth_user, db=db)
