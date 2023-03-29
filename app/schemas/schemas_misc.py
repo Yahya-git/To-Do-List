@@ -13,4 +13,4 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    id: Optional[str] = None
+    email: Optional[EmailStr] = None

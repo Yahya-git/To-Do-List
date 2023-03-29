@@ -48,7 +48,7 @@ def login(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail=f'{"invalid credentials"}'
         )
-    access_token = utils.create_access_token(data={"user_id": user.id})
+    access_token = utils.create_access_token(data={"user_email": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -62,7 +62,7 @@ def login_app_google(
         .filter(models.User.email == user_credentials["email"])
         .first()
     )
-    access_token = utils.create_access_token(data={"user_id": user.id})
+    access_token = utils.create_access_token(data={"user_email": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
 

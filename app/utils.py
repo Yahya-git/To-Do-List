@@ -40,10 +40,10 @@ def create_access_token(data: dict):
 def verify_access_token(token: str, credentials_exception):
     try:
         decoded_jwt = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        id: str = decoded_jwt.get("user_id")
-        if id is None:
+        email: str = decoded_jwt.get("user_email")
+        if email is None:
             raise credentials_exception
-        token_data = schemas_misc.TokenData(id=id)
+        token_data = schemas_misc.TokenData(email=email)
     except JWTError:
         raise credentials_exception
     return token_data
@@ -61,7 +61,7 @@ def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     token = verify_access_token(token, credentials_exception)
-    user = db.query(models.User).filter(models.User.id == token.id).first()
+    user = db.query(models.User).filter(models.User.email == token.email).first()
     return user
 
 
