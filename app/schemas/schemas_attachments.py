@@ -1,11 +1,12 @@
 from typing import Optional
 
+from fastapi import UploadFile
 from pydantic import BaseModel
 
 
 class AttachmentBase(BaseModel):
-    id: int
-    file_attachment: Optional[bytes] = None
+    file_name: Optional[str] = None
+    file_attachment: Optional[UploadFile] = None
 
 
 class AttachmentCreate(AttachmentBase):
@@ -13,6 +14,7 @@ class AttachmentCreate(AttachmentBase):
 
 
 class Attachment(AttachmentBase):
+    id: int
     task_id: int
 
     class Config:
