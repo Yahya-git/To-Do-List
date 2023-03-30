@@ -67,6 +67,7 @@ class Attachment(Base):
     __tablename__ = "attachments"
 
     id = Column(Integer, primary_key=True, index=True)
+    file_name = Column(String)
     file_attachment = Column(LargeBinary)
     task_id = Column(
         Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True
