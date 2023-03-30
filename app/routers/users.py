@@ -208,9 +208,16 @@ def verify_email(token: int, db: Session = get_db_session):
     return {"message": "email verified"}
 
 
-# User Password Reset Endpoint
+# User Password Reset Request Endpoint
 @router.get("/{id}/reset-password-request", status_code=status.HTTP_201_CREATED)
-async def reset_password_request(id: int, db: Session = get_db_session):
+async def reset_password_request(
+    id: int, db: Session = get_db_session, current_user: int = get_current_user
+):
+    if id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="not authorized to perform action",
+        )
     user = db.query(models.User).filter(models.User.id == id).first()
     if user.is_verified is False:
         raise HTTPException(
@@ -222,6 +229,7 @@ async def reset_password_request(id: int, db: Session = get_db_session):
     return {"message": "check your email to proceed further"}
 
 
+# User Password Reset Endpoint
 @router.get("/{id}/reset-password", status_code=status.HTTP_202_ACCEPTED)
 def reset_password(id: int, token: int, db: Session = get_db_session):
     if check_token(token, db=db):
