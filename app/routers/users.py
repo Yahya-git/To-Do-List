@@ -37,9 +37,9 @@ def is_email_same(user: schemas_users.User, db: Session = get_db_session):
         return True
 
 
-def check_user_exists(id: int, db: Session = get_db_session):
+def user_exists(id: int, db: Session = get_db_session):
     usercheck = db.query(models.User).filter(models.User.id == id).first()
-    if not usercheck:
+    if usercheck:
         return True
 
 
@@ -48,7 +48,7 @@ def check_token(token: int, db: Session = get_db_session):
         db.query(models.Verification).filter(models.Verification.token == token).first()
     )
     if not verification_token or verification_token.expires_at < now_local:
-        return True
+        return False
 
 
 def create_new_user(user: schemas_users.UserCreate, db: Session = get_db_session):
@@ -145,8 +145,8 @@ async def send_reset_mail(user: schemas_users.User, token: int):
 )
 async def create_user(user: schemas_users.UserCreate, db: Session = get_db_session):
     try:
-        new_user = create_new_user(user, db=db)
-        token = create_new_token(new_user, db=db)
+        new_user = create_new_user(user, db)
+        token = create_new_token(new_user, db)
         await send_verification_mail(new_user, token)
         return new_user
     except IntegrityError:
@@ -171,7 +171,7 @@ async def update_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="not authorized to perform action",
         )
-    if check_user_exists(id=id, db=db):
+    if not user_exists(id, db):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"user with id: {id} does not exist",
@@ -179,13 +179,13 @@ async def update_user(
     user_query = db.query(models.User).filter(models.User.id == id)
     to_update_user = user_query.first()
     if user.email:
-        if is_email_same(user, db=db):
+        if is_email_same(user, db):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f'{"the new email address cannot be the same as the current email address"}',
             )
         to_update_user.is_verified = False
-        token = create_new_token(to_update_user, db=db)
+        token = create_new_token(to_update_user, db)
         await send_verification_mail(user, token)
     if user.password:
         password = utils.hash(user.password)
@@ -199,12 +199,12 @@ async def update_user(
 # User Email Verification Endpoint
 @router.get("/verify-email", status_code=status.HTTP_202_ACCEPTED)
 def verify_email(token: int, db: Session = get_db_session):
-    if check_token(token, db=db):
+    if not check_token(token, db):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="invalid or expired verification token",
         )
-    delete_used_token(token, db=db)
+    delete_used_token(token, db)
     return {"message": "email verified"}
 
 
@@ -224,7 +224,7 @@ async def reset_password_request(
             status_code=status.HTTP_412_PRECONDITION_FAILED,
             detail=f'{"kindly verify your email before trying to reset password"}',
         )
-    token = create_new_token(user, db=db)
+    token = create_new_token(user, db)
     await send_reset_mail(user, token)
     return {"message": "check your email to proceed further"}
 
@@ -232,7 +232,7 @@ async def reset_password_request(
 # User Password Reset Endpoint
 @router.get("/{id}/reset-password", status_code=status.HTTP_202_ACCEPTED)
 def reset_password(id: int, token: int, db: Session = get_db_session):
-    if check_token(token, db=db):
+    if not check_token(token, db):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="invalid or expired verification token",
@@ -248,7 +248,7 @@ def reset_password(id: int, token: int, db: Session = get_db_session):
     user.password = hashed_password
     db.commit()
     db.refresh(user)
-    delete_used_token(token, db=db)
+    delete_used_token(token, db)
     return {
         "message": f"password successfully reset, use this temporary password to login and change your password: {password}"
     }

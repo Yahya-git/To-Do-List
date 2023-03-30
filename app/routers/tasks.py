@@ -26,6 +26,40 @@ get_db_session = Depends(get_db)
 get_current_user = Depends(utils.get_current_user)
 
 
+def user_auth(
+    id: int,
+    db: Session = get_db_session,
+    current_user: int = get_current_user,
+):
+    usercheck = db.query(models.Task).filter(models.Task.id == id).first()
+    if usercheck.user_id == current_user.id:
+        return True
+
+
+def task_exists(
+    id: int,
+    db: Session = get_db_session,
+):
+    taskcheck = db.query(models.Task).filter(models.Task.id == id).first()
+    if taskcheck:
+        return True
+
+
+def max_tasks_reached(
+    db: Session = get_db_session,
+    current_user: int = get_current_user,
+):
+    taskcheck = (
+        db.query(models.Task.user_id)
+        .filter(models.Task.user_id == current_user.id)
+        .group_by(models.Task.user_id)
+        .having(func.count(models.Task.user_id) == 50)
+        .first()
+    )
+    if taskcheck:
+        return True
+
+
 @router.post(
     "/", status_code=status.HTTP_201_CREATED, response_model=schemas_tasks.Task
 )
@@ -34,13 +68,7 @@ async def create_task(
     db: Session = get_db_session,
     current_user: int = get_current_user,
 ):
-    taskcheck = (
-        db.query(models.Task.user_id)
-        .group_by(models.Task.user_id)
-        .having(func.count(models.Task.user_id) == 50)
-        .first()
-    )
-    if taskcheck:
+    if max_tasks_reached(db, current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f'{"max number of tasks reached"}',
@@ -63,15 +91,16 @@ async def update_task(
 ):
     task_query = db.query(models.Task).filter(models.Task.id == id)
     updated_task = task_query.first()
-    if updated_task is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"task with id: {id} does not exist",
-        )
-    if updated_task.user_id != current_user.id:
+
+    if not user_auth(id, db, current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f'{"not authorized to perform action"}',
+        )
+    if not task_exists(id, db):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"task with id: {id} does not exist",
         )
     task_query.update(task.dict(), synchronize_session=False)
     db.commit()
@@ -85,18 +114,17 @@ async def delete_task(
     db: Session = get_db_session,
     current_user: int = get_current_user,
 ):
-    task_query = db.query(models.Task).filter(models.Task.id == id)
-    deleted_task = task_query.first()
-    if deleted_task is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"task with id: {id} does not exist",
-        )
-    if deleted_task.user_id != current_user.id:
+    if not user_auth(id, db, current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f'{"not authorized to perform action"}',
         )
+    if not task_exists(id, db):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"task with id: {id} does not exist",
+        )
+    task_query = db.query(models.Task).filter(models.Task.id == id)
     task_query.delete(synchronize_session=False)
     db.commit()
     return Response(
@@ -133,8 +161,12 @@ async def get_task(
     db: Session = get_db_session,
     current_user: int = get_current_user,
 ):
-    taskcheck = db.query(models.Task).filter(models.Task.id == id).first()
-    if not taskcheck:
+    if not user_auth(id, db, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f'{"not authorized to perform action"}',
+        )
+    if not task_exists(id, db):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"task with id: {id} does not exist",
@@ -160,8 +192,12 @@ async def upload_file(
     db: Session = get_db_session,
     current_user: int = get_current_user,
 ):
-    taskcheck = db.query(models.Task).filter(models.Task.id == task_id).first()
-    if not taskcheck:
+    if not user_auth(task_id, db, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f'{"not authorized to perform action"}',
+        )
+    if not task_exists(task_id, db):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"task with id: {task_id} not found",
@@ -187,6 +223,16 @@ async def download_file(
     db: Session = get_db_session,
     current_user: int = get_current_user,
 ):
+    if not user_auth(task_id, db, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f'{"not authorized to perform action"}',
+        )
+    if not task_exists(task_id, db):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"task with id: {task_id} not found",
+        )
     filecheck = (
         db.query(models.Attachment)
         .filter(models.Attachment.id == file_id, models.Attachment.task_id == task_id)
