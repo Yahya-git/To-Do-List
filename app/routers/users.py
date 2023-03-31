@@ -43,12 +43,12 @@ def user_exists(id: int, db: Session = get_db_session):
         return True
 
 
-def check_token(token: int, db: Session = get_db_session):
+def false_token(token: int, db: Session = get_db_session):
     verification_token = (
         db.query(users.Verification).filter(users.Verification.token == token).first()
     )
     if not verification_token or verification_token.expires_at < now_local:
-        return False
+        return True
 
 
 def create_new_user(user: schemas_users.UserCreate, db: Session = get_db_session):
@@ -199,7 +199,7 @@ async def update_user(
 # User Email Verification Endpoint
 @router.get("/verify-email", status_code=status.HTTP_202_ACCEPTED)
 def verify_email(token: int, db: Session = get_db_session):
-    if not check_token(token, db):
+    if false_token(token, db):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="invalid or expired verification token",
@@ -232,7 +232,7 @@ async def reset_password_request(
 # User Password Reset Endpoint
 @router.get("/{id}/reset-password", status_code=status.HTTP_202_ACCEPTED)
 def reset_password(id: int, token: int, db: Session = get_db_session):
-    if not check_token(token, db):
+    if false_token(token, db):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="invalid or expired verification token",

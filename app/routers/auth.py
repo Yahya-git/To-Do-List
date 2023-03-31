@@ -11,7 +11,12 @@ from app.schemas import schemas_misc, schemas_users
 
 from ..database.database import get_db
 from ..database.models import users
-from .users import check_email, create_new_user
+from .users import (
+    check_email,
+    create_new_token,
+    create_new_user,
+    send_verification_mail,
+)
 
 local_tz = ZoneInfo("Asia/Karachi")
 now_local = datetime.now(local_tz)
@@ -27,7 +32,7 @@ Depend = Depends()
 @router.post(
     "/login", status_code=status.HTTP_202_ACCEPTED, response_model=schemas_misc.Token
 )
-def login(
+async def login(
     user_credentials: OAuth2PasswordRequestForm = Depend,
     db: Session = get_db_session,
 ):
@@ -41,6 +46,8 @@ def login(
             status_code=status.HTTP_403_FORBIDDEN, detail=f'{"invalid credentials"}'
         )
     if not user.is_verified:
+        token = create_new_token(user, db)
+        await send_verification_mail(user, token)
         raise HTTPException(
             status_code=status.HTTP_412_PRECONDITION_FAILED,
             detail=f'{"kindly verify your email before trying to login"}',
