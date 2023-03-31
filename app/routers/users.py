@@ -11,8 +11,8 @@ from app import utils
 from app.config import settings
 from app.schemas import schemas_users
 
-from ..database import models
 from ..database.database import get_db
+from ..database.models import users
 
 local_tz = ZoneInfo("Asia/Karachi")
 now_local = datetime.now(local_tz)
@@ -26,26 +26,26 @@ get_current_user = Depends(utils.get_current_user)
 
 # Check Conditions
 def check_email(user: schemas_users.User, db: Session = get_db_session):
-    usercheck = db.query(models.User).filter(models.User.email == user.email).first()
+    usercheck = db.query(users.User).filter(users.User.email == user.email).first()
     if usercheck:
         return True
 
 
 def is_email_same(user: schemas_users.User, db: Session = get_db_session):
-    usercheck = db.query(models.User).filter(models.User.email == user.email).first()
+    usercheck = db.query(users.User).filter(users.User.email == user.email).first()
     if usercheck:
         return True
 
 
 def user_exists(id: int, db: Session = get_db_session):
-    usercheck = db.query(models.User).filter(models.User.id == id).first()
+    usercheck = db.query(users.User).filter(users.User.id == id).first()
     if usercheck:
         return True
 
 
 def check_token(token: int, db: Session = get_db_session):
     verification_token = (
-        db.query(models.Verification).filter(models.Verification.token == token).first()
+        db.query(users.Verification).filter(users.Verification.token == token).first()
     )
     if not verification_token or verification_token.expires_at < now_local:
         return False
@@ -54,7 +54,7 @@ def check_token(token: int, db: Session = get_db_session):
 def create_new_user(user: schemas_users.UserCreate, db: Session = get_db_session):
     password = utils.hash(user.password)
     user.password = password
-    new_user = models.User(**user.dict())
+    new_user = users.User(**user.dict())
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -64,15 +64,15 @@ def create_new_user(user: schemas_users.UserCreate, db: Session = get_db_session
 def create_new_token(user: schemas_users.User, db: Session = get_db_session):
     try:
         verification_token = (
-            db.query(models.Verification)
-            .filter(models.Verification.user_id == user.id)
+            db.query(users.Verification)
+            .filter(users.Verification.user_id == user.id)
             .first()
         )
         if verification_token:
             db.delete(verification_token)
             db.commit()
         token = randint(100000, 999999)
-        verification_token = models.Verification(
+        verification_token = users.Verification(
             user_id=user.id,
             token=token,
             expires_at=datetime.now() + timedelta(hours=24),
@@ -91,13 +91,13 @@ def create_new_token(user: schemas_users.User, db: Session = get_db_session):
 def delete_used_token(token: int, db: Session = get_db_session):
     try:
         verification_token = (
-            db.query(models.Verification)
-            .filter(models.Verification.token == token)
+            db.query(users.Verification)
+            .filter(users.Verification.token == token)
             .first()
         )
         user = (
-            db.query(models.User)
-            .filter(models.User.id == verification_token.user_id)
+            db.query(users.User)
+            .filter(users.User.id == verification_token.user_id)
             .first()
         )
         user.is_verified = True
@@ -176,7 +176,7 @@ async def update_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"user with id: {id} does not exist",
         )
-    user_query = db.query(models.User).filter(models.User.id == id)
+    user_query = db.query(users.User).filter(users.User.id == id)
     to_update_user = user_query.first()
     if user.email:
         if is_email_same(user, db):
@@ -218,7 +218,7 @@ async def reset_password_request(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="not authorized to perform action",
         )
-    user = db.query(models.User).filter(models.User.id == id).first()
+    user = db.query(users.User).filter(users.User.id == id).first()
     if user.is_verified is False:
         raise HTTPException(
             status_code=status.HTTP_412_PRECONDITION_FAILED,
@@ -237,7 +237,7 @@ def reset_password(id: int, token: int, db: Session = get_db_session):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="invalid or expired verification token",
         )
-    user = db.query(models.User).filter(models.User.id == id).first()
+    user = db.query(users.User).filter(users.User.id == id).first()
     password = "".join(
         secrets.choice(
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_-+={}[]|;:<>,.?/~`"

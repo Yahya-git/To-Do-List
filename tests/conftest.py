@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.config import settings
-from app.database import models
+from app.database import tasks
 from app.database.database import Base, get_db
 from app.main import app
 from app.schemas import schemas_users
@@ -46,7 +46,7 @@ def test_user_login(client, session):
     response = client.post("/users/", json=user_data)
     assert response.status_code == 201
     user = response.json()
-    session.query(models.User).filter(models.User.email == user_data["email"]).update(
+    session.query(tasks.User).filter(tasks.User.email == user_data["email"]).update(
         {"is_verified": True}
     )
     session.commit()
@@ -60,7 +60,7 @@ def test_user(client, session):
     response = client.post("/users/", json=user_data)
     assert response.status_code == 201
     user = response.json()
-    session.query(models.User).filter(models.User.email == user_data["email"]).update(
+    session.query(tasks.User).filter(tasks.User.email == user_data["email"]).update(
         {"is_verified": True}
     )
     session.commit()
@@ -90,11 +90,11 @@ def test_task(test_user, session):
     ]
 
     def create_task(task):
-        return models.Task(**task)
+        return tasks.Task(**task)
 
     task_map = map(create_task, tasks_data)
     task = list(task_map)
     session.add_all(task)
     session.commit()
-    tasks = session.query(models.Task).all()
-    return tasks
+    taskslist = session.query(tasks.Task).all()
+    return taskslist

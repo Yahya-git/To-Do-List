@@ -8,12 +8,15 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
-from app.database import database, models
+from app.database import database
+from app.database.models import users
 
 from .config import settings
 from .schemas import schemas_misc
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2 = Depends(oauth2_scheme)
+get_db_session = Depends(database.get_db)
 
 SECRET_KEY = settings.secret_key
 ALGORITHM = settings.algorithm
@@ -50,10 +53,8 @@ def verify_access_token(token: str, credentials_exception):
 
 
 def get_current_user(
-    # trunk-ignore(ruff/B008)
-    token: str = Depends(oauth2_scheme),
-    # trunk-ignore(ruff/B008)
-    db: Session = Depends(database.get_db),
+    token: str = oauth2,
+    db: Session = get_db_session,
 ):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -61,7 +62,7 @@ def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     token = verify_access_token(token, credentials_exception)
-    user = db.query(models.User).filter(models.User.email == token.email).first()
+    user = db.query(users.User).filter(users.User.email == token.email).first()
     return user
 
 

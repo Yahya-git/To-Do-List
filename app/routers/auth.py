@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session
 from app import utils
 from app.schemas import schemas_misc, schemas_users
 
-from ..database import models
 from ..database.database import get_db
+from ..database.models import users
 from .users import check_email, create_new_user
 
 local_tz = ZoneInfo("Asia/Karachi")
@@ -32,8 +32,8 @@ def login(
     db: Session = get_db_session,
 ):
     user = (
-        db.query(models.User)
-        .filter(models.User.email == user_credentials.username)
+        db.query(users.User)
+        .filter(users.User.email == user_credentials.username)
         .first()
     )
     if not user:
@@ -58,8 +58,8 @@ def oauth_login(
     db: Session = get_db_session,
 ):
     user = (
-        db.query(models.User)
-        .filter(models.User.email == user_credentials["email"])
+        db.query(users.User)
+        .filter(users.User.email == user_credentials["email"])
         .first()
     )
     access_token = utils.create_access_token(data={"user_email": user.email})
@@ -83,7 +83,7 @@ async def callback_google(request: Request, db: Session = get_db_session):
     }
     oauth_user = schemas_users.UserCreate(**user_data)
     oauth_check = (
-        db.query(models.User).filter(models.User.email == oauth_user.email).first()
+        db.query(users.User).filter(users.User.email == oauth_user.email).first()
     )
     if check_email(oauth_user, db=db) and oauth_check.is_oauth is True:
         data: dict = {"email": oauth_user.email, "password": oauth_user.password}
