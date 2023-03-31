@@ -12,6 +12,8 @@ class TaskBase(BaseModel):
 class TaskCreate(TaskBase):
     description: Optional[str]
     due_date: Optional[datetime]
+    completed_at: Optional[datetime]
+    is_completed: Optional[bool] = False
 
 
 class TaskUpdate(TaskBase):
