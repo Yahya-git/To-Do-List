@@ -91,24 +91,22 @@ async def update_task(
     db: Session = get_db_session,
     current_user: int = get_current_user,
 ):
-    try:
-        task_query = db.query(tasks.Task).filter(tasks.Task.id == id)
-        updated_task = task_query.first()
-
-        if not user_auth(id, db, current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f'{"not authorized to perform action"}',
-            )
-        task_query.update(task.dict(), synchronize_session=False)
-        db.commit()
-        db.refresh(updated_task)
-        return updated_task
-    except IntegrityError:
+    if not does_task_exists(id, db):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"task with id: {id} does not exist",
         ) from None
+    if not user_auth(id, db, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f'{"not authorized to perform action"}',
+        )
+    task_query = db.query(tasks.Task).filter(tasks.Task.id == id)
+    updated_task = task_query.first()
+    task_query.update(task.dict(), synchronize_session=False)
+    db.commit()
+    db.refresh(updated_task)
+    return updated_task
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -117,25 +115,22 @@ async def delete_task(
     db: Session = get_db_session,
     current_user: int = get_current_user,
 ):
-    try:
-        if not user_auth(id, db, current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f'{"not authorized to perform action"}',
-            )
-        db.query(tasks.Task).filter(tasks.Task.id == id).delete(
-            synchronize_session=False
-        )
-        db.commit()
-        return Response(
-            status_code=status.HTTP_204_NO_CONTENT,
-            description="task deleted successfully",
-        )
-    except IntegrityError:
+    if not does_task_exists(id, db):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"task with id: {id} does not exist",
         ) from None
+    if not user_auth(id, db, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f'{"not authorized to perform action"}',
+        )
+    db.query(tasks.Task).filter(tasks.Task.id == id).delete(synchronize_session=False)
+    db.commit()
+    return Response(
+        status_code=status.HTTP_204_NO_CONTENT,
+        description="task deleted successfully",
+    )
 
 
 @router.get(
