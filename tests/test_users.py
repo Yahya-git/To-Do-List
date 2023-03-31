@@ -18,9 +18,9 @@ def test_create_user(client):
     assert res.status_code == 201
 
 
-def test_update_user(client, test_user_update):
-    res = client.patch(
-        f"/users/{test_user_update.id}/",
+def test_update_user(authorized_client, test_user):
+    res = authorized_client.patch(
+        f"/users/{test_user.id}/",
         json={
             "email": "hello@gmail.com",
             "password": "hello",
@@ -31,6 +31,19 @@ def test_update_user(client, test_user_update):
     new_user = schemas_users.User(**res.json())
     assert new_user.email == "hello@gmail.com"
     assert res.status_code == 202
+
+
+def test_wrong_update(client, test_user):
+    res = client.patch(
+        f"/users/{test_user.id}/",
+        json={
+            "email": "hello@gmail.com",
+            "password": "hello",
+            "first_name": "hello",
+            "last_name": "world",
+        },
+    )
+    assert res.status_code == 401
 
 
 def test_login_user(client, test_user_login):
