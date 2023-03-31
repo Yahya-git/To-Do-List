@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app import utils
 from app.config import settings
-from app.schemas import schemas_users
+from app.dtos import dto_users
 
 from ..database.database import get_db
 from ..database.models import users
@@ -21,17 +21,17 @@ now_local = datetime.now(local_tz)
 router = APIRouter(prefix="/users", tags=["Users"])
 
 get_db_session = Depends(get_db)
-get_current_user = Depends(utils.get_current_user)
+validate_user = Depends(utils.validate_user)
 
 
 # Check Conditions
-def check_email(user: schemas_users.User, db: Session = get_db_session):
+def check_email(user: dto_users.UserResponse, db: Session = get_db_session):
     usercheck = db.query(users.User).filter(users.User.email == user.email).first()
     if usercheck:
         return True
 
 
-def is_email_same(user: schemas_users.User, db: Session = get_db_session):
+def is_email_same(user: dto_users.UserResponse, db: Session = get_db_session):
     usercheck = db.query(users.User).filter(users.User.email == user.email).first()
     if usercheck:
         return True
@@ -51,7 +51,7 @@ def false_token(token: int, db: Session = get_db_session):
         return True
 
 
-def create_new_user(user: schemas_users.UserCreate, db: Session = get_db_session):
+def create_new_user(user: dto_users.CreateUserRequest, db: Session = get_db_session):
     password = utils.hash(user.password)
     user.password = password
     new_user = users.User(**user.dict())
@@ -61,7 +61,7 @@ def create_new_user(user: schemas_users.UserCreate, db: Session = get_db_session
     return new_user
 
 
-def create_new_token(user: schemas_users.User, db: Session = get_db_session):
+def create_new_token(user: dto_users.UserResponse, db: Session = get_db_session):
     try:
         verification_token = (
             db.query(users.Verification)
@@ -111,7 +111,7 @@ def delete_used_token(token: int, db: Session = get_db_session):
         ) from None
 
 
-async def send_verification_mail(user: schemas_users.User, token: int):
+async def send_verification_mail(user: dto_users.UserResponse, token: int):
     try:
         verification_url = f"{settings.url}/users/verify-email?token={token}"
         await utils.send_mail(
@@ -124,7 +124,7 @@ async def send_verification_mail(user: schemas_users.User, token: int):
         print(f"something went wrong while sending the verification email: {e}")
 
 
-async def send_reset_mail(user: schemas_users.User, token: int):
+async def send_reset_mail(user: dto_users.UserResponse, token: int):
     try:
         reset_password_url = (
             f"{settings.url}/users/{user.id}/reset-password?token={token}"
@@ -141,9 +141,9 @@ async def send_reset_mail(user: schemas_users.User, token: int):
 
 # User Registration Endpoint
 @router.post(
-    "/", status_code=status.HTTP_201_CREATED, response_model=schemas_users.User
+    "/", status_code=status.HTTP_201_CREATED, response_model=dto_users.UserResponse
 )
-async def create_user(user: schemas_users.UserCreate, db: Session = get_db_session):
+async def create_user(user: dto_users.CreateUserRequest, db: Session = get_db_session):
     try:
         new_user = create_new_user(user, db)
         token = create_new_token(new_user, db)
@@ -158,13 +158,13 @@ async def create_user(user: schemas_users.UserCreate, db: Session = get_db_sessi
 
 # User Updation Endpoint
 @router.patch(
-    "/{id}", status_code=status.HTTP_202_ACCEPTED, response_model=schemas_users.User
+    "/{id}", status_code=status.HTTP_202_ACCEPTED, response_model=dto_users.UserResponse
 )
 async def update_user(
     id: int,
-    user: schemas_users.UserUpdate,
+    user: dto_users.UpdateUserRequest,
     db: Session = get_db_session,
-    current_user: int = get_current_user,
+    current_user: int = validate_user,
 ):
     if id != current_user.id:
         raise HTTPException(
@@ -211,7 +211,7 @@ def verify_email(token: int, db: Session = get_db_session):
 # User Password Reset Request Endpoint
 @router.get("/{id}/reset-password-request", status_code=status.HTTP_201_CREATED)
 async def reset_password_request(
-    id: int, db: Session = get_db_session, current_user: int = get_current_user
+    id: int, db: Session = get_db_session, current_user: int = validate_user
 ):
     if id != current_user.id:
         raise HTTPException(

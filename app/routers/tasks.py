@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import utils
-from app.schemas import schemas_tasks
+from app.dtos import dto_tasks
 
 from ..database.database import get_db
 from ..database.models import tasks
@@ -25,13 +25,13 @@ MAX_TASKS = 50
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 get_db_session = Depends(get_db)
-get_current_user = Depends(utils.get_current_user)
+validate_user = Depends(utils.validate_user)
 
 
-def user_auth(
+def is_user_authorized(
     id: int,
     db: Session = get_db_session,
-    current_user: int = get_current_user,
+    current_user: int = validate_user,
 ):
     usercheck = db.query(tasks.Task).filter(tasks.Task.id == id).first()
     if usercheck.user_id == current_user.id:
@@ -49,7 +49,7 @@ def does_task_exists(
 
 def max_tasks_reached(
     db: Session = get_db_session,
-    current_user: int = get_current_user,
+    current_user: int = validate_user,
 ):
     taskcheck = (
         db.query(tasks.Task.user_id)
@@ -63,12 +63,12 @@ def max_tasks_reached(
 
 
 @router.post(
-    "/", status_code=status.HTTP_201_CREATED, response_model=schemas_tasks.Task
+    "/", status_code=status.HTTP_201_CREATED, response_model=dto_tasks.TaskResponse
 )
 async def create_task(
-    task: schemas_tasks.TaskCreate,
+    task: dto_tasks.CreateTaskRequest,
     db: Session = get_db_session,
-    current_user: int = get_current_user,
+    current_user: int = validate_user,
 ):
     if max_tasks_reached(db, current_user):
         raise HTTPException(
@@ -83,20 +83,20 @@ async def create_task(
 
 
 @router.patch(
-    "/{id}", status_code=status.HTTP_202_ACCEPTED, response_model=schemas_tasks.Task
+    "/{id}", status_code=status.HTTP_202_ACCEPTED, response_model=dto_tasks.TaskResponse
 )
 async def update_task(
     id: int,
-    task: schemas_tasks.TaskUpdate,
+    task: dto_tasks.UpdateTaskRequest,
     db: Session = get_db_session,
-    current_user: int = get_current_user,
+    current_user: int = validate_user,
 ):
     if not does_task_exists(id, db):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"task with id: {id} does not exist",
         ) from None
-    if not user_auth(id, db, current_user):
+    if not is_user_authorized(id, db, current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f'{"not authorized to perform action"}',
@@ -113,14 +113,14 @@ async def update_task(
 async def delete_task(
     id: int,
     db: Session = get_db_session,
-    current_user: int = get_current_user,
+    current_user: int = validate_user,
 ):
     if not does_task_exists(id, db):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"task with id: {id} does not exist",
         ) from None
-    if not user_auth(id, db, current_user):
+    if not is_user_authorized(id, db, current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f'{"not authorized to perform action"}',
@@ -134,11 +134,13 @@ async def delete_task(
 
 
 @router.get(
-    "/", status_code=status.HTTP_202_ACCEPTED, response_model=List[schemas_tasks.Task]
+    "/",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=List[dto_tasks.TaskResponse],
 )
 async def get_tasks(
     db: Session = get_db_session,
-    current_user: int = get_current_user,
+    current_user: int = validate_user,
     search: Optional[str] = "",
     sort: Optional[str] = "due_date",
 ):
@@ -162,15 +164,15 @@ async def get_tasks(
 
 
 @router.get(
-    "/{id}", status_code=status.HTTP_202_ACCEPTED, response_model=schemas_tasks.Task
+    "/{id}", status_code=status.HTTP_202_ACCEPTED, response_model=dto_tasks.TaskResponse
 )
 async def get_task(
     id: int,
     db: Session = get_db_session,
-    current_user: int = get_current_user,
+    current_user: int = validate_user,
 ):
     try:
-        if not user_auth(id, db, current_user):
+        if not is_user_authorized(id, db, current_user):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f'{"not authorized to perform action"}',
@@ -199,10 +201,10 @@ async def upload_file(
     task_id: int,
     file: UploadFile = file,
     db: Session = get_db_session,
-    current_user: int = get_current_user,
+    current_user: int = validate_user,
 ):
     try:
-        if not user_auth(task_id, db, current_user):
+        if not is_user_authorized(task_id, db, current_user):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f'{"not authorized to perform action"}',
@@ -231,10 +233,10 @@ async def download_file(
     task_id: int,
     file_id: int,
     db: Session = get_db_session,
-    current_user: int = get_current_user,
+    current_user: int = validate_user,
 ):
     try:
-        if not user_auth(task_id, db, current_user):
+        if not is_user_authorized(task_id, db, current_user):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f'{"not authorized to perform action"}',

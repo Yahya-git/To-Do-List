@@ -12,7 +12,7 @@ from app.database import database
 from app.database.models import users
 
 from .config import settings
-from .schemas import schemas_misc
+from .dtos import dto_misc
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 oauth2 = Depends(oauth2_scheme)
@@ -46,13 +46,13 @@ def verify_access_token(token: str, credentials_exception):
         email: str = decoded_jwt.get("user_email")
         if email is None:
             raise credentials_exception
-        token_data = schemas_misc.TokenData(email=email)
+        token_data = dto_misc.TokenData(email=email)
     except JWTError:
         raise credentials_exception
     return token_data
 
 
-def get_current_user(
+def validate_user(
     token: str = oauth2,
     db: Session = get_db_session,
 ):
@@ -90,7 +90,7 @@ conf = ConnectionConfig(
 
 
 async def send_mail(
-    email: schemas_misc.Email, link: str, subject_template: str, template: str
+    email: dto_misc.Email, link: str, subject_template: str, template: str
 ):
     message = MessageSchema(
         subject=subject_template, recipients=[email], body=template, subtype="html"

@@ -2,7 +2,7 @@ import pytest
 from jose import jwt
 
 from app.config import settings
-from app.schemas import schemas_misc, schemas_users
+from app.dtos import dto_misc, dto_users
 
 
 def test_root(client):
@@ -13,7 +13,7 @@ def test_root(client):
 
 def test_create_user(client):
     res = client.post("/users/", json={"email": "hello@gmail.com", "password": "hello"})
-    new_user = schemas_users.User(**res.json())
+    new_user = dto_users.UserResponse(**res.json())
     assert new_user.email == "hello@gmail.com"
     assert res.status_code == 201
 
@@ -28,7 +28,7 @@ def test_update_user(authorized_client, test_user):
             "last_name": "world",
         },
     )
-    new_user = schemas_users.User(**res.json())
+    new_user = dto_users.UserResponse(**res.json())
     assert new_user.email == "hello@gmail.com"
     assert res.status_code == 202
 
@@ -52,7 +52,7 @@ def test_login_user(client, test_user_login):
         data={"username": test_user_login.email, "password": test_user_login.password},
     )
     print(res.json())
-    login_res = schemas_misc.Token(**res.json())
+    login_res = dto_misc.Token(**res.json())
     decoded_jwt = jwt.decode(
         login_res.access_token, settings.secret_key, algorithms=[settings.algorithm]
     )

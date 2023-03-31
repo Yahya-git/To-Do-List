@@ -6,8 +6,8 @@ from sqlalchemy.orm import sessionmaker
 from app.config import settings
 from app.database import tasks
 from app.database.database import Base, get_db
+from app.dtos import dto_users
 from app.main import app
-from app.schemas import schemas_users
 from app.utils import create_access_token
 
 SQLALCHEMY_DATABASE_URL = f"postgresql+psycopg2://{settings.db_username}:{settings.db_password}@{settings.db_hostname}:{settings.db_port}/{settings.db_name}_test"
@@ -51,7 +51,7 @@ def test_user_login(client, session):
     )
     session.commit()
     user["password"] = user_data["password"]
-    return schemas_users.UserCreate(**user)
+    return dto_users.CreateUserRequest(**user)
 
 
 @pytest.fixture
@@ -65,7 +65,7 @@ def test_user(client, session):
     )
     session.commit()
     user["password"] = user_data["password"]
-    return schemas_users.User(**user)
+    return dto_users.UserResponse(**user)
 
 
 @pytest.fixture

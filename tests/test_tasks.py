@@ -1,6 +1,6 @@
 import pytest
 
-from app.schemas import schemas_tasks
+from app.dtos import dto_tasks
 
 
 @pytest.mark.parametrize(
@@ -21,7 +21,7 @@ def test_create_tasks(
         f'{"/tasks/"}', json={"title": title, "description": description}
     )
     print(res.json())
-    created_post = schemas_tasks.Task(**res.json())
+    created_post = dto_tasks.TaskResponse(**res.json())
     assert res.status_code == 201
     assert created_post.title == title
     assert created_post.description == description
@@ -33,7 +33,7 @@ def test_update_task(authorized_client, test_user, test_task):
         f"/tasks/{test_task[0].id}", json={"title": "new title"}
     )
     assert res.status_code == 202
-    updated_task = schemas_tasks.Task(**res.json())
+    updated_task = dto_tasks.TaskResponse(**res.json())
     assert updated_task.title == "new title"
     assert updated_task.user_id == test_user.id
 

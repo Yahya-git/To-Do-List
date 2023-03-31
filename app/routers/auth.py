@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import utils
-from app.schemas import schemas_misc, schemas_users
+from app.dtos import dto_misc, dto_users
 
 from ..database.database import get_db
 from ..database.models import users
@@ -30,7 +30,7 @@ Depend = Depends()
 
 # User Login Endpoint
 @router.post(
-    "/login", status_code=status.HTTP_202_ACCEPTED, response_model=schemas_misc.Token
+    "/login", status_code=status.HTTP_202_ACCEPTED, response_model=dto_misc.Token
 )
 async def login(
     user_credentials: OAuth2PasswordRequestForm = Depend,
@@ -88,7 +88,7 @@ async def callback_google(request: Request, db: Session = get_db_session):
         "last_name": user.last_name,
         "password": user.id,
     }
-    oauth_user = schemas_users.UserCreate(**user_data)
+    oauth_user = dto_users.CreateUserRequest(**user_data)
     oauth_check = (
         db.query(users.User).filter(users.User.email == oauth_user.email).first()
     )

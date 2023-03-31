@@ -9,14 +9,14 @@ class TaskBase(BaseModel):
     is_completed: bool = False
 
 
-class TaskCreate(TaskBase):
+class CreateTaskRequest(TaskBase):
     description: Optional[str]
     due_date: Optional[datetime]
     completed_at: Optional[datetime]
     is_completed: Optional[bool] = False
 
 
-class TaskUpdate(TaskBase):
+class UpdateTaskRequest(TaskBase):
     title: Optional[str]
     description: Optional[str]
     due_date: Optional[datetime]
@@ -24,7 +24,7 @@ class TaskUpdate(TaskBase):
     is_completed: Optional[bool] = False
 
 
-class Task(TaskBase):
+class TaskResponse(TaskBase):
     id: int
     user_id: int
     description: Optional[str]
