@@ -7,8 +7,16 @@ SQLALCHEMY_DATABASE_URL = f"postgresql+psycopg2://{settings.db_username}:{settin
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
-session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 class Base(DeclarativeBase):
     pass
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
