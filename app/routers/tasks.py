@@ -250,10 +250,12 @@ async def download_file(
                 detail=f"file with id: {file_id} not found",
             )
         file_name = filecheck.file_name
-        file_data = bytes(filecheck.file_attachment)
+        file_data = filecheck.file_attachment
         with open("temp_file", "wb") as f:
             f.write(file_data)
-        return FileResponse(path="temp_file", filename=file_name)
+        return FileResponse(
+            path="temp_file", filename=file_name, media_type="application/octet-stream"
+        )
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
