@@ -32,7 +32,7 @@ def test_update_task(authorized_client, test_user, test_task):
     res = authorized_client.patch(
         f"/tasks/{test_task[0].id}", json={"title": "new title"}
     )
-    assert res.status_code == 202
+    assert res.status_code == 200
     updated_task = dto_tasks.TaskResponse(**res.json())
     assert updated_task.title == "new title"
     assert updated_task.user_id == test_user.id

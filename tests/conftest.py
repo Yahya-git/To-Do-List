@@ -4,8 +4,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.config import settings
-from app.database import tasks
 from app.database.database import Base, get_db
+from app.database.models import tasks, users
 from app.dtos import dto_users
 from app.main import app
 from app.utils import create_access_token
@@ -46,7 +46,7 @@ def test_user_login(client, session):
     response = client.post("/users/", json=user_data)
     assert response.status_code == 201
     user = response.json()
-    session.query(tasks.User).filter(tasks.User.email == user_data["email"]).update(
+    session.query(users.User).filter(users.User.email == user_data["email"]).update(
         {"is_verified": True}
     )
     session.commit()
@@ -60,7 +60,7 @@ def test_user(client, session):
     response = client.post("/users/", json=user_data)
     assert response.status_code == 201
     user = response.json()
-    session.query(tasks.User).filter(tasks.User.email == user_data["email"]).update(
+    session.query(users.User).filter(users.User.email == user_data["email"]).update(
         {"is_verified": True}
     )
     session.commit()

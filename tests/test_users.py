@@ -30,7 +30,7 @@ def test_update_user(authorized_client, test_user):
     )
     new_user = dto_users.UserResponse(**res.json())
     assert new_user.email == "hello@gmail.com"
-    assert res.status_code == 202
+    assert res.status_code == 200
 
 
 def test_wrong_update(client, test_user):
