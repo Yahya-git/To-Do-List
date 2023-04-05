@@ -5,9 +5,7 @@ from logging.handlers import RotatingFileHandler
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import scheduler
-
-from .routers import auth, tasks, users
+from .routers import auth, scheduler, tasks, users
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
