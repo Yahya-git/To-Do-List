@@ -29,7 +29,7 @@ def test_create_tasks(
 
 
 def test_update_task(authorized_client, test_user, test_task):
-    res = authorized_client.patch(
+    res = authorized_client.put(
         f"/tasks/{test_task[0].id}", json={"title": "new title"}
     )
     assert res.status_code == 200
@@ -41,3 +41,8 @@ def test_update_task(authorized_client, test_user, test_task):
 def test_delete_task(authorized_client, test_task):
     res = authorized_client.delete(f"/tasks/{test_task[0].id}")
     assert res.status_code == 204
+
+
+def test_get_tasks(authorized_client, test_task):
+    res = authorized_client.get(f'{"/tasks/"}')
+    assert res.status_code == 200

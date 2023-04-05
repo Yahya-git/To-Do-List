@@ -12,29 +12,31 @@ def test_root(client):
 
 
 def test_create_user(client):
-    res = client.post("/users/", json={"email": "hello@gmail.com", "password": "hello"})
+    res = client.post(
+        "/users/", json={"email": "yahya.todolist@gmail.com", "password": "hello"}
+    )
     new_user = dto_users.UserResponse(**res.json())
-    assert new_user.email == "hello@gmail.com"
+    assert new_user.email == "yahya.todolist@gmail.com"
     assert res.status_code == 201
 
 
 def test_update_user(authorized_client, test_user):
-    res = authorized_client.patch(
+    res = authorized_client.put(
         f"/users/{test_user.id}/",
         json={
-            "email": "hello@gmail.com",
+            "email": "yahya.todolist@gmail.com",
             "password": "hello",
             "first_name": "hello",
             "last_name": "world",
         },
     )
     new_user = dto_users.UserResponse(**res.json())
-    assert new_user.email == "hello@gmail.com"
+    assert new_user.email == "yahya.todolist@gmail.com"
     assert res.status_code == 200
 
 
 def test_wrong_update(client, test_user):
-    res = client.patch(
+    res = client.put(
         f"/users/{test_user.id}/",
         json={
             "email": "hello@gmail.com",
