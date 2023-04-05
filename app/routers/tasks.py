@@ -82,8 +82,8 @@ async def create_task(
     return task
 
 
-@router.patch(
-    "/{id}", status_code=status.HTTP_202_ACCEPTED, response_model=dto_tasks.TaskResponse
+@router.put(
+    "/{id}", status_code=status.HTTP_200_OK, response_model=dto_tasks.TaskResponse
 )
 async def update_task(
     id: int,
@@ -103,7 +103,7 @@ async def update_task(
         )
     task_query = db.query(tasks.Task).filter(tasks.Task.id == id)
     updated_task = task_query.first()
-    task_query.update(task.dict(), synchronize_session=False)
+    task_query.update(task.dict(exclude_unset=True), synchronize_session=False)
     db.commit()
     db.refresh(updated_task)
     return updated_task
@@ -135,7 +135,7 @@ async def delete_task(
 
 @router.get(
     "/",
-    status_code=status.HTTP_202_ACCEPTED,
+    status_code=status.HTTP_200_OK,
     response_model=List[dto_tasks.TaskResponse],
 )
 async def get_tasks(
@@ -164,7 +164,7 @@ async def get_tasks(
 
 
 @router.get(
-    "/{id}", status_code=status.HTTP_202_ACCEPTED, response_model=dto_tasks.TaskResponse
+    "/{id}", status_code=status.HTTP_200_OK, response_model=dto_tasks.TaskResponse
 )
 async def get_task(
     id: int,

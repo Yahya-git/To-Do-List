@@ -89,9 +89,7 @@ conf = ConnectionConfig(
 )
 
 
-async def send_mail(
-    email: dto_misc.Email, link: str, subject_template: str, template: str
-):
+async def send_mail(email: dto_misc.Email, subject_template: str, template: str):
     message = MessageSchema(
         subject=subject_template, recipients=[email], body=template, subtype="html"
     )

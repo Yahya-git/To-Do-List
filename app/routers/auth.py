@@ -12,10 +12,11 @@ from app.dtos import dto_misc, dto_users
 from ..database.database import get_db
 from ..database.models import users
 from .users import (
-    check_email,
     create_new_token,
     create_new_user,
+    is_email_same,
     send_verification_mail,
+    update_in_database,
 )
 
 local_tz = ZoneInfo("Asia/Karachi")
@@ -46,8 +47,14 @@ async def login(
             status_code=status.HTTP_403_FORBIDDEN, detail=f'{"invalid credentials"}'
         )
     if not user.is_verified:
-        token = create_new_token(user, db)
-        await send_verification_mail(user, token)
+        try:
+            token = create_new_token(user, db)
+        except IntegrityError as e:
+            print(f"Caught an exception while creating a token: {e}")
+        try:
+            await send_verification_mail(user, token)
+        except IntegrityError as e:
+            print(f"Caught an exception while sending the email: {e}")
         raise HTTPException(
             status_code=status.HTTP_412_PRECONDITION_FAILED,
             detail=f'{"kindly verify your email before trying to login"}',
@@ -56,7 +63,10 @@ async def login(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail=f'{"invalid credentials"}'
         )
-    access_token = utils.create_access_token(data={"user_email": user.email})
+    try:
+        access_token = utils.create_access_token(data={"user_email": user.email})
+    except IntegrityError as e:
+        print(f"Caught an exception while creating the access token: {e}")
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -69,7 +79,10 @@ def oauth_login(
         .filter(users.User.email == user_credentials["email"])
         .first()
     )
-    access_token = utils.create_access_token(data={"user_email": user.email})
+    try:
+        access_token = utils.create_access_token(data={"user_email": user.email})
+    except IntegrityError as e:
+        print(f"Caught an exception while creating the access token: {e}")
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -92,18 +105,18 @@ async def callback_google(request: Request, db: Session = get_db_session):
     oauth_check = (
         db.query(users.User).filter(users.User.email == oauth_user.email).first()
     )
-    if check_email(oauth_user, db=db) and oauth_check.is_oauth is True:
+    if is_email_same(oauth_user, db=db) and oauth_check.is_oauth is True:
         data: dict = {"email": oauth_user.email, "password": oauth_user.password}
         access_token = oauth_login(user_credentials=data, db=db)
         return access_token
     try:
         new_oauth_user = create_new_user(oauth_user, db=db)
-        new_oauth_user.is_verified = True
-        new_oauth_user.is_oauth = True
-        db.commit()
-        return {"message": "login again to get access token"}
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"user with email: {user.email} already exists",
         ) from None
+    new_oauth_user.is_verified = True
+    new_oauth_user.is_oauth = True
+    update_in_database(new_oauth_user, db)
+    return {"message": "login again to get access token"}
