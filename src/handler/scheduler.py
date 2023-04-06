@@ -6,9 +6,9 @@ from fastapi_utils.tasks import repeat_every
 from sqlalchemy import Date, cast
 from sqlalchemy.orm import Session
 
-from app import utils
-from app.config import settings
-from app.database.models import tasks, users
+from src.config import settings
+from src.handler import utils
+from src.models import tasks, users
 
 database_uri = f"postgresql+psycopg2://{settings.db_username}:{settings.db_password}@{settings.db_hostname}:{settings.db_port}/{settings.db_name}"
 sessionmaker = FastAPISessionMaker(database_uri)

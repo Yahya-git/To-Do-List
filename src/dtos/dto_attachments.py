@@ -9,11 +9,11 @@ class AttachmentBase(BaseModel):
     file_attachment: Optional[UploadFile] = None
 
 
-class AttachmentCreate(AttachmentBase):
+class CreateAttachmentRequest(AttachmentBase):
     task_id: int
 
 
-class Attachment(AttachmentBase):
+class AttachmentResponse(AttachmentBase):
     id: int
     task_id: int
 

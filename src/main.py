@@ -5,7 +5,8 @@ from logging.handlers import RotatingFileHandler
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import auth, scheduler, tasks, users
+from .controller import auth, reports, tasks, users
+from .handler import scheduler
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -68,7 +69,7 @@ async def app_entry(request: Request, call_next):
     await set_body(request, await request.body())
     logger.info(f"Request Body: {await get_body(request)}")
     response = await call_next(request)
-    logger.info(f"Outgoing Response: {response.status_code} {response.headers}")
+    logger.info(f"Outgoing Response: {response.status_code}")
     res_body = b""
     async for chunk in response.body_iterator:
         res_body += chunk
@@ -85,6 +86,7 @@ app.include_router(users.router)
 app.include_router(tasks.router)
 app.include_router(auth.router)
 app.include_router(scheduler.router)
+app.include_router(reports.router)
 
 
 @app.get("/")

@@ -3,12 +3,12 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.config import settings
-from app.database.database import Base, get_db
-from app.database.models import tasks, users
-from app.dtos import dto_users
-from app.main import app
-from app.utils import create_access_token
+from src.config import settings
+from src.database import Base, get_db
+from src.dtos import dto_users
+from src.handler.utils import create_access_token
+from src.main import app
+from src.models import tasks, users
 
 SQLALCHEMY_DATABASE_URL = f"postgresql+psycopg2://{settings.db_username}:{settings.db_password}@{settings.db_hostname}:{settings.db_port}/{settings.db_name}_test"
 

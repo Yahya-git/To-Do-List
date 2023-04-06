@@ -1,8 +1,8 @@
 import pytest
 from jose import jwt
 
-from app.config import settings
-from app.dtos import dto_misc, dto_users
+from src.config import settings
+from src.dtos import dto_misc, dto_users
 
 
 def test_root(client):

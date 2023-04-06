@@ -8,11 +8,12 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
-from app.database import database
-from app.database.models import users
+from dtos import dto_users
+from src.models import users
 
-from .config import settings
-from .dtos import dto_misc
+from .. import database
+from ..config import settings
+from ..dtos import dto_misc
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 oauth2 = Depends(oauth2_scheme)
@@ -95,3 +96,21 @@ async def send_mail(email: dto_misc.Email, subject_template: str, template: str)
     )
     fm = FastMail(conf)
     await fm.send_message(message)
+
+
+async def send_verification_mail(user: dto_users.UserResponse, token: int):
+    verification_url = f"{settings.url}/users/verify-email?token={token}"
+    await send_mail(
+        email=user.email,
+        subject_template="Verify Email",
+        template=f"Click the following link to verify your email: {verification_url}",
+    )
+
+
+async def send_reset_password_mail(user: dto_users.UserResponse, token: int):
+    reset_password_url = f"{settings.url}/users/{user.id}/reset-password?token={token}"
+    await send_mail(
+        email=user.email,
+        subject_template="Reset Password",
+        template=f"Click the following link to reset your password: {reset_password_url}",
+    )

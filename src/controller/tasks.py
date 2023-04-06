@@ -8,11 +8,11 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import utils
-from app.dtos import dto_tasks
+from src.dtos import dto_tasks
+from src.handler import utils
 
-from ..database.database import get_db
-from ..database.models import tasks
+from ..database import get_db
+from ..models import tasks
 
 # from zoneinfo import ZoneInfo
 

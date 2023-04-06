@@ -6,11 +6,11 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import utils
-from app.dtos import dto_misc, dto_users
+from src.dtos import dto_misc, dto_users
+from src.handler import utils
 
-from ..database.database import get_db
-from ..database.models import users
+from ..database import get_db
+from ..models import users
 from .users import (
     create_new_token,
     create_new_user,

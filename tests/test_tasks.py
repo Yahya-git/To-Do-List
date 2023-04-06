@@ -1,6 +1,6 @@
 import pytest
 
-from app.dtos import dto_tasks
+from src.dtos import dto_tasks
 
 
 @pytest.mark.parametrize(
