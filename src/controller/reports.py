@@ -4,10 +4,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from src.database import get_db
 from src.dtos import dto_reports
 from src.handler import utils
-
-from ..database import get_db
 
 # from zoneinfo import ZoneInfo
 

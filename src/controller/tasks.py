@@ -1,65 +1,25 @@
-# from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from fastapi.openapi.models import Response
-from fastapi.responses import FileResponse
-from sqlalchemy import func
-from sqlalchemy.exc import IntegrityError
+from fastapi import APIRouter, Depends, File, UploadFile, status
 from sqlalchemy.orm import Session
 
+from src.database import get_db
 from src.dtos import dto_tasks
 from src.handler import utils
-
-from ..database import get_db
-from ..models import tasks
-
-# from zoneinfo import ZoneInfo
-
-
-# local_tz = ZoneInfo("Asia/Karachi")
-# now_local = datetime.now(local_tz)
-
-MAX_TASKS = 50
+from src.handler.tasks import (
+    create_task_handler,
+    delete_task_handler,
+    download_file_handler,
+    get_task_handler,
+    get_tasks_handler,
+    update_task_handler,
+    upload_file_handler,
+)
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 get_db_session = Depends(get_db)
 validate_user = Depends(utils.validate_user)
-
-
-def is_user_authorized(
-    id: int,
-    db: Session = get_db_session,
-    current_user: int = validate_user,
-):
-    usercheck = db.query(tasks.Task).filter(tasks.Task.id == id).first()
-    if usercheck.user_id == current_user.id:
-        return True
-
-
-def does_task_exists(
-    id: int,
-    db: Session = get_db_session,
-):
-    taskcheck = db.query(tasks.Task).filter(tasks.Task.id == id).first()
-    if taskcheck:
-        return True
-
-
-def max_tasks_reached(
-    db: Session = get_db_session,
-    current_user: int = validate_user,
-):
-    taskcheck = (
-        db.query(tasks.Task.user_id)
-        .filter(tasks.Task.user_id == current_user.id)
-        .group_by(tasks.Task.user_id)
-        .having(func.count(tasks.Task.user_id) == MAX_TASKS)
-        .first()
-    )
-    if taskcheck:
-        return True
 
 
 @router.post(
@@ -70,16 +30,7 @@ async def create_task(
     db: Session = get_db_session,
     current_user: int = validate_user,
 ):
-    if max_tasks_reached(db, current_user):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f'{"max number of tasks reached"}',
-        )
-    task = tasks.Task(user_id=current_user.id, **task.dict())
-    db.add(task)
-    db.commit()
-    db.refresh(task)
-    return task
+    return await create_task_handler(task, db, current_user)
 
 
 @router.put(
@@ -91,22 +42,7 @@ async def update_task(
     db: Session = get_db_session,
     current_user: int = validate_user,
 ):
-    if not does_task_exists(id, db):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"task with id: {id} does not exist",
-        ) from None
-    if not is_user_authorized(id, db, current_user):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f'{"not authorized to perform action"}',
-        )
-    task_query = db.query(tasks.Task).filter(tasks.Task.id == id)
-    updated_task = task_query.first()
-    task_query.update(task.dict(exclude_unset=True), synchronize_session=False)
-    db.commit()
-    db.refresh(updated_task)
-    return updated_task
+    return await update_task_handler(id, task, db, current_user)
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -115,22 +51,7 @@ async def delete_task(
     db: Session = get_db_session,
     current_user: int = validate_user,
 ):
-    if not does_task_exists(id, db):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"task with id: {id} does not exist",
-        ) from None
-    if not is_user_authorized(id, db, current_user):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f'{"not authorized to perform action"}',
-        )
-    db.query(tasks.Task).filter(tasks.Task.id == id).delete(synchronize_session=False)
-    db.commit()
-    return Response(
-        status_code=status.HTTP_204_NO_CONTENT,
-        description="task deleted successfully",
-    )
+    return await delete_task_handler(id, db, current_user)
 
 
 @router.get(
@@ -144,23 +65,7 @@ async def get_tasks(
     search: Optional[str] = "",
     sort: Optional[str] = "due_date",
 ):
-    try:
-        sort_attr = getattr(tasks.Task, sort)
-        all_tasks = (
-            db.query(tasks.Task)
-            .filter(
-                tasks.Task.user_id == current_user.id,
-                tasks.Task.title.contains(search),
-            )
-            .order_by(sort_attr)
-            .all()
-        )
-        return all_tasks
-    except IntegrityError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f'{"there are no tasks"}',
-        ) from None
+    return await get_tasks_handler(db, current_user, search, sort)
 
 
 @router.get(
@@ -171,23 +76,7 @@ async def get_task(
     db: Session = get_db_session,
     current_user: int = validate_user,
 ):
-    try:
-        if not is_user_authorized(id, db, current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f'{"not authorized to perform action"}',
-            )
-        task = (
-            db.query(tasks.Task)
-            .filter(tasks.Task.user_id == current_user.id, tasks.Task.id == id)
-            .first()
-        )
-        return task
-    except IntegrityError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"task with id: {id} does not exist",
-        ) from None
+    return await get_task_handler(id, db, current_user)
 
 
 file = File(...)
@@ -203,26 +92,7 @@ async def upload_file(
     db: Session = get_db_session,
     current_user: int = validate_user,
 ):
-    try:
-        if not is_user_authorized(task_id, db, current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f'{"not authorized to perform action"}',
-            )
-        file_name = file.filename
-        file_data = await file.read()
-        attachment = tasks.Attachment(
-            task_id=task_id, file_attachment=file_data, file_name=file_name
-        )
-        db.add(attachment)
-        db.commit()
-        db.refresh(attachment)
-        return {"message": f"successfully attached file: {file_name}"}
-    except IntegrityError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"task with id: {task_id} does not exist",
-        ) from None
+    return await upload_file_handler(task_id, file, db, current_user)
 
 
 @router.get(
@@ -235,31 +105,4 @@ async def download_file(
     db: Session = get_db_session,
     current_user: int = validate_user,
 ):
-    try:
-        if not is_user_authorized(task_id, db, current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f'{"not authorized to perform action"}',
-            )
-        filecheck = (
-            db.query(tasks.Attachment)
-            .filter(tasks.Attachment.id == file_id, tasks.Attachment.task_id == task_id)
-            .first()
-        )
-        if not filecheck:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"file with id: {file_id} not found",
-            )
-        file_name = filecheck.file_name
-        file_data = filecheck.file_attachment
-        with open("temp_file", "wb") as f:
-            f.write(file_data)
-        return FileResponse(
-            path="temp_file", filename=file_name, media_type="application/octet-stream"
-        )
-    except IntegrityError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"task with id: {task_id} does not exist",
-        ) from None
+    return await download_file_handler(task_id, file_id, db, current_user)

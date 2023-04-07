@@ -4,10 +4,10 @@ from random import randint
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from database import get_db
-from dtos import dto_users
-from handler import utils
-from models import users
+from src.database import get_db
+from src.dtos import dto_users
+from src.handler.utils import hash_password
+from src.models import users
 
 get_db_session = Depends(get_db)
 
@@ -30,7 +30,7 @@ def update_in_database(record, db: Session = get_db_session):
 
 
 def create_new_user(user: dto_users.CreateUserRequest, db: Session = get_db_session):
-    password = utils.hash(user.password)
+    password = hash_password(user.password)
     user.password = password
     new_user = users.User(**user.dict())
     add_to_database(new_user, db)

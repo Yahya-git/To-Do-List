@@ -8,16 +8,14 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
-from dtos import dto_users
+from src.config import settings
+from src.database import get_db
+from src.dtos import dto_misc, dto_users
 from src.models import users
-
-from .. import database
-from ..config import settings
-from ..dtos import dto_misc
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 oauth2 = Depends(oauth2_scheme)
-get_db_session = Depends(database.get_db)
+get_db_session = Depends(get_db)
 
 SECRET_KEY = settings.secret_key
 ALGORITHM = settings.algorithm
@@ -70,11 +68,11 @@ def validate_user(
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-def hash(password: str):
+def hash_password(password: str):
     return pwd_context.hash(password)
 
 
-def verify(attempted_password, hashed_password):
+def verify_password(attempted_password, hashed_password):
     return pwd_context.verify(attempted_password, hashed_password)
 
 

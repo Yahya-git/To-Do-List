@@ -5,17 +5,18 @@ from fastapi import Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from database import get_db
-from dtos import dto_users
-from handler import utils
-from models import tasks, users
+from src.database import get_db
+from src.dtos import dto_users
+from src.models import tasks, users
+
+from ..handler.utils import validate_user
 
 MAX_TASKS = 50
 local_tz = ZoneInfo("Asia/Karachi")
 now_local = datetime.now(local_tz)
 
 get_db_session = Depends(get_db)
-validate_user = Depends(utils.validate_user)
+validated_user = Depends(validate_user)
 
 
 # Check Conditions
@@ -42,7 +43,7 @@ def false_token(token: int, db: Session = get_db_session):
 def is_user_authorized(
     id: int,
     db: Session = get_db_session,
-    current_user: int = validate_user,
+    current_user: int = validated_user,
 ):
     usercheck = db.query(tasks.Task).filter(tasks.Task.id == id).first()
     if usercheck.user_id == current_user.id:
@@ -60,7 +61,7 @@ def does_task_exists(
 
 def max_tasks_reached(
     db: Session = get_db_session,
-    current_user: int = validate_user,
+    current_user: int = validated_user,
 ):
     taskcheck = (
         db.query(tasks.Task.user_id)
