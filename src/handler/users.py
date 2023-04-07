@@ -13,21 +13,20 @@ from sqlalchemy.orm import Session
 
 from src.database import get_db
 from src.dtos import dto_users
-from src.models import users
-from src.repository.database_operations import (
-    create_new_token,
-    create_new_user,
-    delete_used_token,
-    update_in_database,
-    verify_user,
-)
-
-from ..handler.checks import false_token, is_email_same
-from ..handler.utils import (
+from src.handler.checks import does_user_exist, false_token, is_email_same
+from src.handler.utils import (
     hash_password,
     send_reset_password_mail,
     send_verification_mail,
     validate_user,
+)
+from src.repository.database_queries import (
+    create_user,
+    create_verification_token_by_user_id,
+    delete_verification_token,
+    get_user_by_id,
+    update_user_by_id,
+    update_user_by_id_restricted,
 )
 
 get_db_session = Depends(get_db)
@@ -38,18 +37,18 @@ async def create_user_handler(
     user: dto_users.CreateUserRequest, db: Session = get_db_session
 ):
     try:
-        new_user = create_new_user(user, db)
+        new_user = create_user(user, db)
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"user with email: {user.email} already exists",
         ) from None
     try:
-        token = create_new_token(new_user, db)
+        token = create_verification_token_by_user_id(new_user.id, db)
     except IntegrityError as e:
         print(f"Caught an exception while creating a token: {e}")
     try:
-        await send_verification_mail(new_user, token)
+        await send_verification_mail(new_user, token.token)
     except ConnectionErrors as e:
         print(f"Caught an exception while sending the email: {e}")
     return new_user
@@ -66,8 +65,13 @@ async def update_user_handler(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="not authorized to perform action",
         )
-    user_query = db.query(users.User).filter(users.User.id == id)
-    to_update_user = user_query.first()
+    try:
+        to_update_user = get_user_by_id(id, db)
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"user with id: {id} does not exist",
+        ) from None
     if user.email:
         if is_email_same(user, db):
             raise HTTPException(
@@ -76,24 +80,16 @@ async def update_user_handler(
             )
         to_update_user.is_verified = False
         try:
-            token = create_new_token(to_update_user, db)
+            token = create_verification_token_by_user_id(to_update_user.id, db)
         except IntegrityError as e:
             print(f"Caught an exception while creating a token: {e}")
         try:
-            await send_verification_mail(user, token)
+            await send_verification_mail(user, token.token)
         except ConnectionErrors as e:
             print(f"Caught an exception while sending the email: {e}")
     if user.password:
-        password = hash_password(user.password)
-        user.password = password
-    try:
-        user_query.update(user.dict(exclude_unset=True), synchronize_session=False)
-        update_in_database(to_update_user, db)
-    except IntegrityError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"user with id: {id} does not exist",
-        ) from None
+        user.password = hash_password(user.password)
+    update_user_by_id(id, user, db)
     return to_update_user
 
 
@@ -104,36 +100,42 @@ def verify_email_handler(token: int, db: Session = get_db_session):
             detail="invalid or expired verification token",
         )
     try:
-        user_id = delete_used_token(token, db)
+        token_data = delete_verification_token(token, db)
     except IntegrityError as e:
         print(f"Caught an exception while deleting a token: {e}")
     try:
-        verify_user(user_id, db)
+        user_data = dto_users.UpdateUserRestricted(is_verified=True)
+        update_user_by_id_restricted(token_data.user_id, user_data, db)
     except IntegrityError as e:
         print(f"Caught an exception while verifying a user: {e}")
     return {"message": "email verified"}
 
 
-async def reset_password_request_handler(
-    id: int, db: Session = get_db_session, current_user: int = validate_user
-):
-    if id != current_user.id:
+async def reset_password_request_handler(id: int, db: Session = get_db_session):
+    if not does_user_exist(id, db):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="not authorized to perform action",
-        )
-    user = db.query(users.User).filter(users.User.id == id).first()
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"user with id: {id} does not exist",
+        ) from None
+    user = get_user_by_id(id, db)
     if user.is_verified is False:
+        token = create_verification_token_by_user_id(user.id, db)
+        await send_verification_mail(user, token.token)
         raise HTTPException(
             status_code=status.HTTP_412_PRECONDITION_FAILED,
             detail=f'{"kindly verify your email before trying to reset password"}',
         )
+    if user.is_oauth is True:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f'{"change your google account password instead"}',
+        )
     try:
-        token = create_new_token(user, db)
+        token = create_verification_token_by_user_id(user.id, db)
     except IntegrityError as e:
         print(f"Caught an exception while creating a token: {e}")
     try:
-        await send_reset_password_mail(user, token)
+        await send_reset_password_mail(user, token.token)
     except ConnectionErrors as e:
         print(f"Caught an exception while sending the email: {e}")
     return {"message": "check your email to proceed further"}
@@ -145,17 +147,20 @@ def reset_password_handler(id: int, token: int, db: Session = get_db_session):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="invalid or expired verification token",
         )
-    user = db.query(users.User).filter(users.User.id == id).first()
+    token_data = delete_verification_token(token, db)
+    if token_data.user_id == id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="id and user id from token mismatch",
+        )
     password = "".join(
         secrets.choice(
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_-+={}[]|;:<>,.?/~`"
         )
         for i in range(8)
     )
-    hashed_password = hash_password(password)
-    user.password = hashed_password
-    update_in_database(user, db)
-    delete_used_token(token, db)
+    user_data = dto_users.UpdateUserRequest(password=hash_password(password))
+    update_user_by_id(token_data.user_id, user_data, db)
     return {
         "message": f"password successfully reset, use this temporary password to login and change your password: {password}"
     }

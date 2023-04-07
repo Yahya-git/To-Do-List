@@ -47,10 +47,8 @@ def verify_email(token: int, db: Session = get_db_session):
 
 # User Password Reset Request Endpoint
 @router.get("/{id}/reset-password-request", status_code=status.HTTP_201_CREATED)
-async def reset_password_request(
-    id: int, db: Session = get_db_session, current_user: int = validated_user
-):
-    return await reset_password_request_handler(id, db, current_user)
+async def reset_password_request(id: int, db: Session = get_db_session):
+    return await reset_password_request_handler(id, db)
 
 
 # User Password Reset Endpoint

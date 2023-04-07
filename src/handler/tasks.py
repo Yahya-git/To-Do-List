@@ -7,15 +7,28 @@ from sqlalchemy.orm import Session
 
 from src.database import get_db
 from src.dtos import dto_tasks
-from src.handler.checks import does_task_exists, is_user_authorized, max_tasks_reached
+from src.handler.checks import (
+    do_tasks_exist,
+    does_task_exists,
+    is_user_authorized,
+    is_user_authorized_for_task,
+    max_tasks_reached,
+)
 from src.handler.utils import validate_user
 from src.models import tasks
+from src.repository.database_queries import (
+    create_task_by_user_id,
+    delete_task_by_id,
+    get_task_by_id,
+    get_tasks_by_user_id,
+    update_task_by_id,
+)
 
 get_db_session = Depends(get_db)
 validated_user = Depends(validate_user)
 
 
-async def create_task_handler(
+def create_task_handler(
     task: dto_tasks.CreateTaskRequest,
     db: Session = get_db_session,
     current_user: int = validated_user,
@@ -25,14 +38,11 @@ async def create_task_handler(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f'{"max number of tasks reached"}',
         )
-    task = tasks.Task(user_id=current_user.id, **task.dict())
-    db.add(task)
-    db.commit()
-    db.refresh(task)
-    return task
+    new_task = create_task_by_user_id(current_user.id, task, db)
+    return new_task
 
 
-async def update_task_handler(
+def update_task_handler(
     id: int,
     task: dto_tasks.UpdateTaskRequest,
     db: Session = get_db_session,
@@ -43,20 +53,17 @@ async def update_task_handler(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"task with id: {id} does not exist",
         ) from None
-    if not is_user_authorized(id, db, current_user):
+    if not is_user_authorized_for_task(id, db, current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f'{"not authorized to perform action"}',
         )
-    task_query = db.query(tasks.Task).filter(tasks.Task.id == id)
-    to_update_task = task_query.first()
-    task_query.update(task.dict(exclude_unset=True), synchronize_session=False)
-    db.commit()
-    db.refresh(to_update_task)
+    to_update_task = get_task_by_id(id, db)
+    update_task_by_id(id, task, db)
     return to_update_task
 
 
-async def delete_task_handler(
+def delete_task_handler(
     id: int,
     db: Session = get_db_session,
     current_user: int = validated_user,
@@ -66,57 +73,41 @@ async def delete_task_handler(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"task with id: {id} does not exist",
         ) from None
-    if not is_user_authorized(id, db, current_user):
+    if not is_user_authorized_for_task(id, db, current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f'{"not authorized to perform action"}',
         )
-    db.query(tasks.Task).filter(tasks.Task.id == id).delete(synchronize_session=False)
-    db.commit()
+    delete_task_by_id(id, db)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-async def get_tasks_handler(
+def get_tasks_handler(
     db: Session = get_db_session,
     current_user: int = validated_user,
     search: Optional[str] = "",
     sort: Optional[str] = "due_date",
 ):
-    try:
-        sort_attr = getattr(tasks.Task, sort)
-        all_tasks = (
-            db.query(tasks.Task)
-            .filter(
-                tasks.Task.user_id == current_user.id,
-                tasks.Task.title.contains(search),
-            )
-            .order_by(sort_attr)
-            .all()
-        )
-        return all_tasks
-    except IntegrityError:
+    if not do_tasks_exist(current_user.id, db):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f'{"there are no tasks"}',
-        ) from None
+            status_code=status.HTTP_404_NOT_FOUND, detail=f'{"there are no tasks"}'
+        )
+    tasks = get_tasks_by_user_id(current_user.id, db, search, sort)
+    return tasks
 
 
-async def get_task_handler(
+def get_task_handler(
     id: int,
     db: Session = get_db_session,
     current_user: int = validated_user,
 ):
     try:
-        if not is_user_authorized(id, db, current_user):
+        if not is_user_authorized_for_task(id, db, current_user):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f'{"not authorized to perform action"}',
             )
-        task = (
-            db.query(tasks.Task)
-            .filter(tasks.Task.user_id == current_user.id, tasks.Task.id == id)
-            .first()
-        )
+        task = get_task_by_id(id, db)
         return task
     except IntegrityError:
         raise HTTPException(

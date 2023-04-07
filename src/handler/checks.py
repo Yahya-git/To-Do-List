@@ -2,18 +2,21 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from fastapi import Depends
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from src.database import get_db
 from src.dtos import dto_users
-from src.models import tasks, users
+from src.handler.utils import validate_user
+from src.repository.database_queries import (
+    get_max_tasks_by_user_id,
+    get_task_by_id,
+    get_tasks_by_user_id,
+    get_user_by_email,
+    get_user_by_id,
+    get_verification_token,
+)
 
-from ..handler.utils import validate_user
-
-MAX_TASKS = 50
-local_tz = ZoneInfo("Asia/Karachi")
-now_local = datetime.now(local_tz)
+now_local = datetime.now(ZoneInfo("Asia/Karachi"))
 
 get_db_session = Depends(get_db)
 validated_user = Depends(validate_user)
@@ -21,21 +24,19 @@ validated_user = Depends(validate_user)
 
 # Check Conditions
 def is_email_same(user: dto_users.UserResponse, db: Session = get_db_session):
-    usercheck = db.query(users.User).filter(users.User.email == user.email).first()
-    if usercheck:
+    user_check = get_user_by_email(user.email, db)
+    if user_check:
         return True
 
 
 def does_user_exist(id: int, db: Session = get_db_session):
-    usercheck = db.query(users.User).filter(users.User.id == id).first()
-    if usercheck:
+    user_check = get_user_by_id(id, db)
+    if user_check:
         return True
 
 
 def false_token(token: int, db: Session = get_db_session):
-    verification_token = (
-        db.query(users.Verification).filter(users.Verification.token == token).first()
-    )
+    verification_token = get_verification_token(token, db)
     if not verification_token or verification_token.expires_at < now_local:
         return True
 
@@ -45,8 +46,24 @@ def is_user_authorized(
     db: Session = get_db_session,
     current_user: int = validated_user,
 ):
-    usercheck = db.query(tasks.Task).filter(tasks.Task.id == id).first()
-    if usercheck.user_id == current_user.id:
+    user_check = get_user_by_id(id, db)
+    if user_check.id == current_user.id:
+        return True
+
+
+def is_user_authorized_for_task(
+    id: int,
+    db: Session = get_db_session,
+    current_user: int = validated_user,
+):
+    task_check = get_task_by_id(id, db)
+    if task_check.user_id == current_user.id:
+        return True
+
+
+def do_tasks_exist(user_id: int, db: Session = get_db_session):
+    tasks_check = get_tasks_by_user_id(user_id, db)
+    if tasks_check:
         return True
 
 
@@ -54,8 +71,8 @@ def does_task_exists(
     id: int,
     db: Session = get_db_session,
 ):
-    taskcheck = db.query(tasks.Task).filter(tasks.Task.id == id).first()
-    if taskcheck:
+    task_check = get_task_by_id(id, db)
+    if task_check:
         return True
 
 
@@ -63,12 +80,6 @@ def max_tasks_reached(
     db: Session = get_db_session,
     current_user: int = validated_user,
 ):
-    taskcheck = (
-        db.query(tasks.Task.user_id)
-        .filter(tasks.Task.user_id == current_user.id)
-        .group_by(tasks.Task.user_id)
-        .having(func.count(tasks.Task.user_id) == MAX_TASKS)
-        .first()
-    )
-    if taskcheck:
+    task_check = get_max_tasks_by_user_id(current_user.id, db)
+    if task_check:
         return True

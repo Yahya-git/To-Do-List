@@ -19,6 +19,11 @@ class UpdateUserRequest(UserBase):
     password: Optional[str]
 
 
+class UpdateUserRestricted(BaseModel):
+    is_verified: Optional[bool]
+    is_oauth: Optional[bool]
+
+
 class UserResponse(UserBase):
     id: int
     created_at: datetime

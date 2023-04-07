@@ -16,10 +16,11 @@ from src.handler.utils import (
     verify_password,
 )
 from src.models import users
-from src.repository.database_operations import (
-    create_new_token,
-    create_new_user,
-    update_in_database,
+from src.repository.database_queries import (
+    create_user,
+    create_verification_token_by_user_id,
+    get_user_by_email,
+    update_user_by_id_restricted,
 )
 
 local_tz = ZoneInfo("Asia/Karachi")
@@ -33,22 +34,18 @@ async def login_handler(
     user_credentials: OAuth2PasswordRequestForm = Depend,
     db: Session = get_db_session,
 ):
-    user = (
-        db.query(users.User)
-        .filter(users.User.email == user_credentials.username)
-        .first()
-    )
+    user = get_user_by_email(user_credentials.username, db)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail=f'{"invalid credentials"}'
         )
     if not user.is_verified:
         try:
-            token = create_new_token(user, db)
+            token = create_verification_token_by_user_id(user.id, db)
         except IntegrityError as e:
             print(f"Caught an exception while creating a token: {e}")
         try:
-            await send_verification_mail(user, token)
+            await send_verification_mail(user, token.token)
         except IntegrityError as e:
             print(f"Caught an exception while sending the email: {e}")
         raise HTTPException(
@@ -95,21 +92,18 @@ async def callback_google_handler(request: Request, db: Session = get_db_session
         "password": user.id,
     }
     oauth_user = dto_users.CreateUserRequest(**user_data)
-    oauth_check = (
-        db.query(users.User).filter(users.User.email == oauth_user.email).first()
-    )
+    oauth_check = get_user_by_email(user.email, db)
     if is_email_same(oauth_user, db=db) and oauth_check.is_oauth is True:
         data: dict = {"email": oauth_user.email, "password": oauth_user.password}
         access_token = oauth_login(user_credentials=data, db=db)
         return access_token
     try:
-        new_oauth_user = create_new_user(oauth_user, db=db)
+        new_oauth_user = create_user(oauth_user, db=db)
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"user with email: {user.email} already exists",
         ) from None
-    new_oauth_user.is_verified = True
-    new_oauth_user.is_oauth = True
-    update_in_database(new_oauth_user, db)
+    user_data = dto_users.UpdateUserRestricted(is_verified=True, is_oauth=True)
+    update_user_by_id_restricted(new_oauth_user.id, user_data, db)
     return {"message": "login again to get access token"}
