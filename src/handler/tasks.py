@@ -64,7 +64,8 @@ def update_task_handler(
         )
     to_update_task = get_task_by_id(id, db)
     if task.is_completed is True:
-        to_update_task.completed_at = now_local
+        if not task.completed_at:
+            to_update_task.completed_at = now_local
     if task.is_completed is False:
         to_update_task.completed_at = None
     update_task_by_id(id, task, db)
