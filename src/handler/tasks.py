@@ -1,4 +1,6 @@
+from datetime import datetime
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from fastapi import Depends, File, HTTPException, Response, UploadFile, status
 from fastapi.responses import FileResponse
@@ -10,7 +12,6 @@ from src.dtos import dto_tasks
 from src.handler.checks import (
     do_tasks_exist,
     does_task_exists,
-    is_user_authorized,
     is_user_authorized_for_task,
     max_tasks_reached,
 )
@@ -19,10 +20,13 @@ from src.models import tasks
 from src.repository.database_queries import (
     create_task_by_user_id,
     delete_task_by_id,
+    get_file_by_file_and_task_id,
     get_task_by_id,
     get_tasks_by_user_id,
     update_task_by_id,
 )
+
+now_local = datetime.now(ZoneInfo("Asia/Karachi"))
 
 get_db_session = Depends(get_db)
 validated_user = Depends(validate_user)
@@ -59,6 +63,10 @@ def update_task_handler(
             detail=f'{"not authorized to perform action"}',
         )
     to_update_task = get_task_by_id(id, db)
+    if task.is_completed is True:
+        to_update_task.completed_at = now_local
+    if task.is_completed is False:
+        to_update_task.completed_at = None
     update_task_by_id(id, task, db)
     return to_update_task
 
@@ -116,17 +124,17 @@ def get_task_handler(
         ) from None
 
 
-file = File(...)
+to_be_uploaded_file = File(...)
 
 
 async def upload_file_handler(
     task_id: int,
-    file: UploadFile = file,
+    file: UploadFile = to_be_uploaded_file,
     db: Session = get_db_session,
     current_user: int = validated_user,
 ):
     try:
-        if not is_user_authorized(task_id, db, current_user):
+        if not is_user_authorized_for_task(task_id, db, current_user):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f'{"not authorized to perform action"}',
@@ -154,23 +162,19 @@ async def download_file_handler(
     current_user: int = validate_user,
 ):
     try:
-        if not is_user_authorized(task_id, db, current_user):
+        if not is_user_authorized_for_task(task_id, db, current_user):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f'{"not authorized to perform action"}',
             )
-        filecheck = (
-            db.query(tasks.Attachment)
-            .filter(tasks.Attachment.id == file_id, tasks.Attachment.task_id == task_id)
-            .first()
-        )
-        if not filecheck:
+        file = get_file_by_file_and_task_id(file_id, task_id, db)
+        if not file:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"file with id: {file_id} not found",
             )
-        file_name = filecheck.file_name
-        file_data = filecheck.file_attachment
+        file_name = file.file_name
+        file_data = file.file_attachment
         with open("temp_file", "wb") as f:
             f.write(file_data)
         return FileResponse(

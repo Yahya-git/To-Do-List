@@ -15,7 +15,7 @@ from src.dtos.dto_users import (
     UpdateUserRestricted,
 )
 from src.handler.utils import hash_password
-from src.models.tasks import Task
+from src.models.tasks import Attachment, Task
 from src.models.users import User, Verification
 
 get_db_session = Depends(get_db)
@@ -158,3 +158,14 @@ def get_verification_token_by_user_id(id: int, db: Session = get_db_session):
         db.query(Verification).filter(Verification.user_id == id).first()
     )
     return verification_token
+
+
+def get_file_by_file_and_task_id(
+    file_id: int, task_id: int, db: Session = get_db_session
+):
+    file = (
+        db.query(Attachment)
+        .filter(Attachment.id == file_id, Attachment.task_id == task_id)
+        .first()
+    )
+    return file

@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from src.database import get_db
 from src.dtos import dto_reports
+from src.handler.reports import average_tasks_handler, count_tasks_handler
 from src.handler.utils import validate_user
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
@@ -14,15 +14,9 @@ validated_user = Depends(validate_user)
 
 @router.get("/count", response_model=dto_reports.CountReportResponse)
 def count_tasks(db: Session = get_db_session, current_user: int = validated_user):
-    query = text(
-        "SELECT COUNT(tasks.id) AS total_tasks, SUM(CASE WHEN tasks.is_completed = True THEN 1 ELSE 0 END) AS completed_tasks, SUM(CASE WHEN tasks.is_completed = False THEN 1 ELSE 0 END) AS incomplete_tasks FROM tasks WHERE tasks.user_id = :user_id GROUP BY tasks.is_completed"
-    )
-    count = db.execute(query, {"user_id": current_user.id}).fetchone()
-    return count
+    return count_tasks_handler(db, current_user)
 
 
-# @router.get("/average", response_model=dto_reports.AverageReportResponse)
-# def average_tasks(db: Session = get_db_session, current_user: int = validated_user):
-#     query = text("SELECT COUNT(tasks.id) AS total_tasks, SUM(CASE WHEN tasks.is_completed = True THEN 1 ELSE 0 END) AS completed_tasks, SUM(CASE WHEN tasks.is_completed = False THEN 1 ELSE 0 END) AS incomplete_tasks FROM tasks WHERE tasks.user_id = :user_id GROUP BY tasks.is_completed")
-#     count = (db.execute(query, {'user_id': current_user.id}).fetchone())
-#     return count
+@router.get("/average", response_model=dto_reports.AverageReportResponse)
+def average_tasks(db: Session = get_db_session, current_user: int = validated_user):
+    return average_tasks_handler(db, current_user)

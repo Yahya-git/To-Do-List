@@ -20,7 +20,6 @@ class UpdateTaskRequest(TaskBase):
     title: Optional[str]
     description: Optional[str]
     due_date: Optional[datetime]
-    completed_at: Optional[datetime]
     is_completed: Optional[bool] = False
 
 
