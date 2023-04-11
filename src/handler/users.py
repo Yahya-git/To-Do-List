@@ -96,7 +96,7 @@ async def update_user_handler(
 def verify_email_handler(token: int, db: Session = get_db_session):
     if false_token(token, db):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="invalid or expired verification token",
         )
     try:
@@ -144,7 +144,7 @@ async def reset_password_request_handler(id: int, db: Session = get_db_session):
 def reset_password_handler(id: int, token: int, db: Session = get_db_session):
     if false_token(token, db):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="invalid or expired verification token",
         )
     token_data = delete_verification_token(token, db)

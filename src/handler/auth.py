@@ -37,7 +37,7 @@ async def login_handler(
     user = get_user_by_email(user_credentials.username, db)
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail=f'{"invalid credentials"}'
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=f'{"invalid credentials"}'
         )
     if not user.is_verified:
         try:
@@ -54,7 +54,7 @@ async def login_handler(
         )
     if not verify_password(user_credentials.password, user.password):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail=f'{"invalid credentials"}'
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=f'{"invalid credentials"}'
         )
     try:
         access_token = create_access_token(data={"user_email": user.email})
