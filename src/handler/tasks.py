@@ -16,8 +16,8 @@ from src.handler.checks import (
     max_tasks_reached,
 )
 from src.handler.utils import validate_user
-from src.models import tasks
 from src.repository.database_queries import (
+    create_file_by_task_id,
     create_task_by_user_id,
     delete_task_by_id,
     get_file_by_file_and_task_id,
@@ -141,12 +141,7 @@ async def upload_file_handler(
             )
         file_name = file.filename
         file_data = await file.read()
-        attachment = tasks.Attachment(
-            task_id=task_id, file_attachment=file_data, file_name=file_name
-        )
-        db.add(attachment)
-        db.commit()
-        db.refresh(attachment)
+        attachment = create_file_by_task_id(task_id, file_name, file_data, db)
         return {
             "message": f"successfully attached file: {file_name} (file_id: {attachment.id})"
         }

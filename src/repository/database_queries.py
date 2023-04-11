@@ -160,6 +160,17 @@ def get_verification_token_by_user_id(id: int, db: Session = get_db_session):
     return verification_token
 
 
+def create_file_by_task_id(
+    task_id: int, file_name: str, file_data: bytes, db: Session = get_db_session
+):
+    attachment = Attachment(
+        task_id=task_id, file_attachment=file_data, file_name=file_name
+    )
+    db.add(attachment)
+    db.commit()
+    return attachment
+
+
 def get_file_by_file_and_task_id(
     file_id: int, task_id: int, db: Session = get_db_session
 ):
