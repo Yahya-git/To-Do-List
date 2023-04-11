@@ -32,7 +32,6 @@ class TaskResponse(TaskBase):
     updated_at: datetime
     due_date: Optional[datetime]
     completed_at: Optional[datetime]
-    file_attachment: Optional[bytes]
 
     class Config:
         orm_mode = True

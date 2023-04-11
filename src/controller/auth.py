@@ -18,7 +18,9 @@ Depend = Depends()
 
 # User Login Endpoint
 @router.post(
-    "/login", status_code=status.HTTP_202_ACCEPTED, response_model=dto_misc.Token
+    "/login",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=dto_misc.TokenResponse,
 )
 async def login(
     user_credentials: OAuth2PasswordRequestForm = Depend,

@@ -54,7 +54,7 @@ def test_login_user(client, test_user_login):
         data={"username": test_user_login.email, "password": test_user_login.password},
     )
     print(res.json())
-    login_res = dto_misc.Token(**res.json())
+    login_res = dto_misc.TokenResponse(**res.json())
     decoded_jwt = jwt.decode(
         login_res.access_token, settings.secret_key, algorithms=[settings.algorithm]
     )

@@ -7,7 +7,7 @@ class Email(BaseModel):
     email: List[EmailStr]
 
 
-class Token(BaseModel):
+class TokenResponse(BaseModel):
     access_token: str
     token_type: str
 

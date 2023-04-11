@@ -110,19 +110,18 @@ def get_task_handler(
     db: Session = get_db_session,
     current_user: int = validated_user,
 ):
-    try:
-        if not is_user_authorized_for_task(id, db, current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f'{"not authorized to perform action"}',
-            )
-        task = get_task_by_id(id, db)
-        return task
-    except IntegrityError:
+    if not does_task_exists(id, db):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"task with id: {id} does not exist",
-        ) from None
+        )
+    if not is_user_authorized_for_task(id, db, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f'{"not authorized to perform action"}',
+        )
+    task = get_task_by_id(id, db)
+    return task
 
 
 to_be_uploaded_file = File(...)
@@ -148,7 +147,9 @@ async def upload_file_handler(
         db.add(attachment)
         db.commit()
         db.refresh(attachment)
-        return {"message": f"successfully attached file: {file_name}"}
+        return {
+            "message": f"successfully attached file: {file_name} (file_id: {attachment.id})"
+        }
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
