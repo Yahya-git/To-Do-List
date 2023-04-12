@@ -4,7 +4,6 @@ from zoneinfo import ZoneInfo
 
 from fastapi import Depends, File, HTTPException, Response, UploadFile, status
 from fastapi.responses import FileResponse
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from src.database import get_db
@@ -133,23 +132,22 @@ async def upload_file_handler(
     db: Session = get_db_session,
     current_user: int = validated_user,
 ):
-    try:
-        if not is_user_authorized_for_task(task_id, db, current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f'{"not authorized to perform action"}',
-            )
-        file_name = file.filename
-        file_data = await file.read()
-        attachment = create_file_by_task_id(task_id, file_name, file_data, db)
-        return {
-            "message": f"successfully attached file: {file_name} (file_id: {attachment.id})"
-        }
-    except IntegrityError:
+    if not does_task_exists(task_id, db):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"task with id: {task_id} does not exist",
-        ) from None
+        )
+    if not is_user_authorized_for_task(task_id, db, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f'{"not authorized to perform action"}',
+        )
+    file_name = file.filename
+    file_data = await file.read()
+    attachment = create_file_by_task_id(task_id, file_name, file_data, db)
+    return {
+        "message": f"successfully attached file: {file_name} (file_id: {attachment.id})"
+    }
 
 
 async def download_file_handler(
@@ -158,27 +156,26 @@ async def download_file_handler(
     db: Session = get_db_session,
     current_user: int = validate_user,
 ):
-    try:
-        if not is_user_authorized_for_task(task_id, db, current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f'{"not authorized to perform action"}',
-            )
-        file = get_file_by_file_and_task_id(file_id, task_id, db)
-        if not file:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"file with id: {file_id} not found",
-            )
-        file_name = file.file_name
-        file_data = file.file_attachment
-        with open("temp_file", "wb") as f:
-            f.write(file_data)
-        return FileResponse(
-            path="temp_file", filename=file_name, media_type="application/octet-stream"
-        )
-    except IntegrityError:
+    if not does_task_exists(task_id, db):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"task with id: {task_id} does not exist",
-        ) from None
+        )
+    if not is_user_authorized_for_task(task_id, db, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f'{"not authorized to perform action"}',
+        )
+    file = get_file_by_file_and_task_id(file_id, task_id, db)
+    if not file:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"file with id: {file_id} not found",
+        )
+    file_name = file.file_name
+    file_data = file.file_attachment
+    with open("temp_file", "wb") as f:
+        f.write(file_data)
+    return FileResponse(
+        path="temp_file", filename=file_name, media_type="application/octet-stream"
+    )
