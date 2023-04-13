@@ -3,13 +3,7 @@ from sqlalchemy.orm import Session
 
 from src.database import get_db
 from src.dtos import dto_users
-from src.handler.users import (
-    create_user_handler,
-    reset_password_handler,
-    reset_password_request_handler,
-    update_user_handler,
-    verify_email_handler,
-)
+from src.handler import users as handler
 from src.handler.utils import validate_user
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -23,7 +17,7 @@ validated_user = Depends(validate_user)
     "/", status_code=status.HTTP_201_CREATED, response_model=dto_users.UserResponse
 )
 async def create_user(user: dto_users.CreateUserRequest, db: Session = get_db_session):
-    return await create_user_handler(user, db)
+    return await handler.create_user(user, db)
 
 
 # User Updation Endpoint
@@ -36,22 +30,22 @@ async def update_user(
     db: Session = get_db_session,
     current_user: int = validated_user,
 ):
-    return await update_user_handler(id, user, db, current_user)
+    return await handler.update_user(id, user, db, current_user)
 
 
 # User Email Verification Endpoint
 @router.get("/verify-email", status_code=status.HTTP_202_ACCEPTED)
 def verify_email(token: int, db: Session = get_db_session):
-    return verify_email_handler(token, db)
+    return handler.verify_email(token, db)
 
 
 # User Password Reset Request Endpoint
 @router.get("/{id}/reset-password-request", status_code=status.HTTP_201_CREATED)
 async def reset_password_request(id: int, db: Session = get_db_session):
-    return await reset_password_request_handler(id, db)
+    return await handler.reset_password_request(id, db)
 
 
 # User Password Reset Endpoint
 @router.get("/{id}/reset-password", status_code=status.HTTP_202_ACCEPTED)
 def reset_password(id: int, token: int, db: Session = get_db_session):
-    return reset_password_handler(id, token, db)
+    return handler.reset_password(id, token, db)

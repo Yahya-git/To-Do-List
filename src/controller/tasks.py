@@ -5,21 +5,13 @@ from sqlalchemy.orm import Session
 
 from src.database import get_db
 from src.dtos import dto_tasks
-from src.handler import utils
-from src.handler.tasks import (
-    create_task_handler,
-    delete_task_handler,
-    download_file_handler,
-    get_task_handler,
-    get_tasks_handler,
-    update_task_handler,
-    upload_file_handler,
-)
+from src.handler import tasks as handler
+from src.handler.utils import validate_user
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 get_db_session = Depends(get_db)
-validate_user = Depends(utils.validate_user)
+validated_user = Depends(validate_user)
 
 
 # Create Task Endpoint
@@ -29,9 +21,9 @@ validate_user = Depends(utils.validate_user)
 async def create_task(
     task: dto_tasks.CreateTaskRequest,
     db: Session = get_db_session,
-    current_user: int = validate_user,
+    current_user: int = validated_user,
 ):
-    return create_task_handler(task, db, current_user)
+    return handler.create_task(task, db, current_user)
 
 
 # Update Task Endpoint
@@ -42,9 +34,9 @@ async def update_task(
     id: int,
     task: dto_tasks.UpdateTaskRequest,
     db: Session = get_db_session,
-    current_user: int = validate_user,
+    current_user: int = validated_user,
 ):
-    return update_task_handler(id, task, db, current_user)
+    return handler.update_task(id, task, db, current_user)
 
 
 # Delete Task Endpoint
@@ -52,9 +44,9 @@ async def update_task(
 async def delete_task(
     id: int,
     db: Session = get_db_session,
-    current_user: int = validate_user,
+    current_user: int = validated_user,
 ):
-    return delete_task_handler(id, db, current_user)
+    return handler.delete_task(id, db, current_user)
 
 
 # Get Tasks Endpoint
@@ -65,11 +57,11 @@ async def delete_task(
 )
 async def get_tasks(
     db: Session = get_db_session,
-    current_user: int = validate_user,
+    current_user: int = validated_user,
     search: Optional[str] = "",
     sort: Optional[str] = "due_date",
 ):
-    return get_tasks_handler(db, current_user, search, sort)
+    return handler.get_tasks(db, current_user, search, sort)
 
 
 # Get Task Endpoint
@@ -79,9 +71,9 @@ async def get_tasks(
 async def get_task(
     id: int,
     db: Session = get_db_session,
-    current_user: int = validate_user,
+    current_user: int = validated_user,
 ):
-    return get_task_handler(id, db, current_user)
+    return handler.get_task(id, db, current_user)
 
 
 file = File(...)
@@ -96,9 +88,9 @@ async def upload_file(
     task_id: int,
     file: UploadFile = file,
     db: Session = get_db_session,
-    current_user: int = validate_user,
+    current_user: int = validated_user,
 ):
-    return await upload_file_handler(task_id, file, db, current_user)
+    return await handler.upload_file(task_id, file, db, current_user)
 
 
 # Download File from Task Endpoint
@@ -110,6 +102,6 @@ async def download_file(
     task_id: int,
     file_id: int,
     db: Session = get_db_session,
-    current_user: int = validate_user,
+    current_user: int = validated_user,
 ):
-    return await download_file_handler(task_id, file_id, db, current_user)
+    return await handler.download_file(task_id, file_id, db, current_user)

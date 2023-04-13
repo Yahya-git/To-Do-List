@@ -3,7 +3,7 @@ from typing import List, Optional
 from pydantic import BaseModel, EmailStr
 
 
-class Email(BaseModel):
+class EmailList(BaseModel):
     email: List[EmailStr]
 
 

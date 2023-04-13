@@ -4,11 +4,7 @@ from sqlalchemy.orm import Session
 
 from src.database import get_db
 from src.dtos import dto_misc
-from src.handler.auth import (
-    callback_google_handler,
-    login_google_handler,
-    login_handler,
-)
+from src.handler import auth as handler
 
 router = APIRouter(tags=["Auth"])
 
@@ -26,15 +22,15 @@ async def login(
     user_credentials: OAuth2PasswordRequestForm = Depend,
     db: Session = get_db_session,
 ):
-    return await login_handler(user_credentials, db)
+    return await handler.login(user_credentials, db)
 
 
 # User Google Login Endpoint
 @router.get("/login/oauth")
 async def login_google():
-    return await login_google_handler()
+    return await handler.login_google()
 
 
 @router.get("/login/google/callback", status_code=status.HTTP_202_ACCEPTED)
 async def callback_google(request: Request, db: Session = get_db_session):
-    return await callback_google_handler(request, db)
+    return await handler.callback_google(request, db)
