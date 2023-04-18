@@ -1,10 +1,10 @@
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, File, UploadFile, status
 from sqlalchemy.orm import Session
 
 from src.database import get_db
-from src.dtos import dto_tasks
+from src.dtos import dto_misc, dto_tasks
 from src.handler import tasks as handler
 from src.handler.utils import validate_user
 
@@ -16,27 +16,33 @@ validated_user = Depends(validate_user)
 
 # Create Task Endpoint
 @router.post(
-    "/", status_code=status.HTTP_201_CREATED, response_model=dto_tasks.TaskResponse
+    "/",
+    status_code=status.HTTP_201_CREATED,
+    response_model=dto_misc.TaskSingleResponse[dto_tasks.TaskResponse],
 )
 async def create_task(
-    task: dto_tasks.CreateTaskRequest,
+    task_data: dto_tasks.CreateTaskRequest,
     db: Session = get_db_session,
     current_user: int = validated_user,
 ):
-    return handler.create_task(task, db, current_user)
+    task = handler.create_task(task_data, db, current_user)
+    return {"status": "successfully created task", "data": {"task": task}}
 
 
 # Update Task Endpoint
 @router.put(
-    "/{id}", status_code=status.HTTP_200_OK, response_model=dto_tasks.TaskResponse
+    "/{id}",
+    status_code=status.HTTP_200_OK,
+    response_model=dto_misc.TaskSingleResponse[dto_tasks.TaskResponse],
 )
 async def update_task(
     id: int,
-    task: dto_tasks.UpdateTaskRequest,
+    task_data: dto_tasks.UpdateTaskRequest,
     db: Session = get_db_session,
     current_user: int = validated_user,
 ):
-    return handler.update_task(id, task, db, current_user)
+    task = handler.update_task(id, task_data, db, current_user)
+    return {"status": "successfully updated task", "data": {"task": task}}
 
 
 # Delete Task Endpoint
@@ -53,7 +59,7 @@ async def delete_task(
 @router.get(
     "/",
     status_code=status.HTTP_200_OK,
-    response_model=List[dto_tasks.TaskResponse],
+    response_model=dto_misc.TaskMultipleResponse[dto_tasks.TaskResponse],
 )
 async def get_tasks(
     db: Session = get_db_session,
@@ -61,19 +67,23 @@ async def get_tasks(
     search: Optional[str] = "",
     sort: Optional[str] = "due_date",
 ):
-    return handler.get_tasks(db, current_user, search, sort)
+    tasks = handler.get_tasks(db, current_user, search, sort)
+    return {"status": "success", "data": {"tasks": tasks}}
 
 
 # Get Task Endpoint
 @router.get(
-    "/{id}", status_code=status.HTTP_200_OK, response_model=dto_tasks.TaskResponse
+    "/{id}",
+    status_code=status.HTTP_200_OK,
+    response_model=dto_misc.TaskSingleResponse[dto_tasks.TaskResponse],
 )
 async def get_task(
     id: int,
     db: Session = get_db_session,
     current_user: int = validated_user,
 ):
-    return handler.get_task(id, db, current_user)
+    task = handler.get_task(id, db, current_user)
+    return {"status": "success", "data": {"task": task}}
 
 
 file = File(...)

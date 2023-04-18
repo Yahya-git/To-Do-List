@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from src.database import get_db
-from src.dtos import dto_users
+from src.dtos import dto_misc, dto_users
 from src.handler import users as handler
 from src.handler.utils import validate_user
 
@@ -14,23 +14,31 @@ validated_user = Depends(validate_user)
 
 # User Registration Endpoint
 @router.post(
-    "/", status_code=status.HTTP_201_CREATED, response_model=dto_users.UserResponse
+    "/",
+    status_code=status.HTTP_201_CREATED,
+    response_model=dto_misc.UserSingleResponse[dto_users.UserResponse],
 )
-async def create_user(user: dto_users.CreateUserRequest, db: Session = get_db_session):
-    return await handler.create_user(user, db)
+async def create_user(
+    user_data: dto_users.CreateUserRequest, db: Session = get_db_session
+):
+    user = await handler.create_user(user_data, db)
+    return {"status": "registration complete", "data": {"user": user}}
 
 
 # User Updation Endpoint
 @router.put(
-    "/{id}", status_code=status.HTTP_200_OK, response_model=dto_users.UserResponse
+    "/{id}",
+    status_code=status.HTTP_200_OK,
+    response_model=dto_misc.UserSingleResponse[dto_users.UserResponse],
 )
 async def update_user(
     id: int,
-    user: dto_users.UpdateUserRequest,
+    user_data: dto_users.UpdateUserRequest,
     db: Session = get_db_session,
     current_user: int = validated_user,
 ):
-    return await handler.update_user(id, user, db, current_user)
+    user = await handler.update_user(id, user_data, db, current_user)
+    return {"status": "successfully updated user data", "data": {"user": user}}
 
 
 # User Email Verification Endpoint
