@@ -7,10 +7,14 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from src.dtos import dto_tasks
-from src.repository import checks
 from src.repository import tasks as repository
-
-now_local = datetime.now(ZoneInfo("Asia/Karachi"))
+from src.repository.exceptions import (
+    CreateError,
+    DeleteError,
+    GetError,
+    MaxTasksReachedError,
+    UpdateError,
+)
 
 
 def create_task(
@@ -18,13 +22,19 @@ def create_task(
     db: Session,
     current_user: int,
 ):
-    if checks.max_tasks_reached(db, current_user):
+    try:
+        new_task = repository.create_task(current_user.id, task, db)
+        return new_task
+    except MaxTasksReachedError:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f'{"max number of tasks reached"}',
-        )
-    new_task = repository.create_task(current_user.id, task, db)
-    return new_task
+            detail=f'{"message: maximum number of tasks reached"}',
+        ) from None
+    except CreateError:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'{"message: something went wrong while creating a task"}',
+        ) from None
 
 
 def update_task(
@@ -33,17 +43,20 @@ def update_task(
     db: Session,
     current_user: int,
 ):
+    local_tz = ZoneInfo("Asia/Karachi")
+    now_local = datetime.now(local_tz)
     if task.is_completed is True:
         task.completed_at = now_local
     if task.is_completed is False:
         task.completed_at = None
-    updated_task = repository.update_task(id, task, db, current_user.id)
-    if not updated_task:
+    try:
+        updated_task = repository.update_task(id, task, db, current_user.id)
+        return updated_task
+    except UpdateError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"not authorized to perform action or task with id: {id} does not exist",
-        )
-    return updated_task
+        ) from None
 
 
 def delete_task(
@@ -51,13 +64,14 @@ def delete_task(
     db: Session,
     current_user: int,
 ):
-    deleted_task = repository.delete_task(id, db, current_user.id)
-    if not deleted_task:
+    try:
+        repository.delete_task(id, db, current_user.id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except DeleteError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"not authorized to perform action or task with id: {id} does not exist",
-        )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+        ) from None
 
 
 def get_tasks(
@@ -66,12 +80,13 @@ def get_tasks(
     search: Optional[str] = "",
     sort: Optional[str] = "due_date",
 ):
-    tasks = repository.get_tasks(current_user.id, db, search, sort)
-    if not tasks:
+    try:
+        tasks = repository.get_tasks(current_user.id, db, search, sort)
+        return tasks
+    except GetError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f'{"there are no tasks"}'
-        )
-    return tasks
+        ) from None
 
 
 def get_task(
@@ -79,13 +94,14 @@ def get_task(
     db: Session,
     current_user: int,
 ):
-    task = repository.get_task(id, db, current_user.id)
-    if not task:
+    try:
+        task = repository.get_task(id, db, current_user.id)
+        return task
+    except GetError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"not authorized to perform action or task with id: {id} does not exist",
-        )
-    return task
+        ) from None
 
 
 async def upload_file(
@@ -94,11 +110,13 @@ async def upload_file(
     db: Session,
     current_user: int,
 ):
-    if not checks.is_user_authorized_for_task(task_id, db, current_user):
+    try:
+        repository.get_task(task_id, db, current_user.id)
+    except GetError:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f'{"not authorized to perform action"}',
-        )
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"not authorized to perform action or task with id: {task_id} does not exist",
+        ) from None
     file_name = file.filename
     file_data = await file.read()
     attachment = repository.create_file(task_id, file_name, file_data, db)
@@ -115,17 +133,20 @@ async def download_file(
     db: Session,
     current_user: int,
 ):
-    if not checks.is_user_authorized_for_task(task_id, db, current_user):
+    try:
+        repository.get_task(task_id, db, current_user.id)
+    except GetError:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f'{"not authorized to perform action"}',
-        )
-    file = repository.get_file(file_id, task_id, db)
-    if not file:
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"not authorized to perform action or task with id: {task_id} does not exist",
+        ) from None
+    try:
+        file = repository.get_file(file_id, task_id, db)
+    except FileNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"file with id: {file_id} not found",
-        )
+        ) from None
     file_name = file.file_name
     file_data = file.file_attachment
     with open("temp_file", "wb") as f:

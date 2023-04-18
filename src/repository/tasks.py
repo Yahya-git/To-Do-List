@@ -1,19 +1,35 @@
+from datetime import date
 from typing import Optional
 
-from sqlalchemy import func
+from sqlalchemy import Date, cast, func
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.functions import coalesce
 
 from src.config import settings
 from src.dtos.dto_tasks import CreateTaskRequest, UpdateTaskRequest
 from src.models.tasks import Attachment, Task
+from src.repository import checks
+from src.repository.exceptions import (
+    CreateError,
+    DeleteError,
+    GetError,
+    MaxTasksReachedError,
+    UpdateError,
+)
 
 
 def create_task(id, task_data: CreateTaskRequest, db: Session):
-    task = Task(user_id=id, **task_data.dict())
-    db.add(task)
-    db.commit()
-    return task
+    if checks.max_tasks_reached(db, id):
+        raise MaxTasksReachedError
+    try:
+        task = Task(user_id=id, **task_data.dict())
+        db.add(task)
+        db.commit()
+        return task
+    except SQLAlchemyError as e:
+        print(f"Exception: {e}")
+        raise CreateError from e
 
 
 def update_task(task_id: int, task_data: UpdateTaskRequest, db: Session, user_id: int):
@@ -33,6 +49,8 @@ def update_task(task_id: int, task_data: UpdateTaskRequest, db: Session, user_id
     )
     updated_task = db.execute(query).fetchone()
     db.commit()
+    if not updated_task:
+        raise UpdateError
     return updated_task
 
 
@@ -44,11 +62,15 @@ def delete_task(task_id: int, db: Session, user_id: int):
     )
     deleted_task = db.execute(query).fetchone()
     db.commit()
+    if not deleted_task:
+        raise DeleteError
     return deleted_task
 
 
 def get_task(task_id: int, db: Session, user_id):
     task = db.query(Task).filter(Task.id == task_id, Task.user_id == user_id).first()
+    if not task:
+        raise GetError
     return task
 
 
@@ -68,6 +90,8 @@ def get_tasks(
         .order_by(sort_attr)
         .all()
     )
+    if not tasks:
+        raise GetError
     return tasks
 
 
@@ -80,6 +104,25 @@ def get_max_tasks(id: int, db: Session):
         .first()
     )
     return max_tasks
+
+
+def all_tasks_due_today(db: Session):
+    all_tasks_due_today = (
+        db.query(Task).filter(cast(Task.due_date, Date) == date.today()).all()
+    )
+    return all_tasks_due_today
+
+
+def tasks_due_today(db: Session, user_id: int):
+    user_tasks_due_today = (
+        db.query(Task)
+        .filter(
+            cast(Task.due_date, Date) == date.today(),
+            Task.user_id == user_id,
+        )
+        .all()
+    )
+    return user_tasks_due_today
 
 
 def create_file(task_id: int, file_name: str, file_data: bytes, db: Session):
@@ -97,4 +140,6 @@ def get_file(file_id: int, task_id: int, db: Session):
         .filter(Attachment.id == file_id, Attachment.task_id == task_id)
         .first()
     )
+    if not file:
+        raise FileNotFoundError
     return file

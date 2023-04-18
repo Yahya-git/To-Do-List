@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+from aiosmtplib import SMTPDataError
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema
@@ -12,6 +13,7 @@ from src.config import settings
 from src.database import get_db
 from src.dtos import dto_misc, dto_users
 from src.models import users
+from src.repository.exceptions import CreateError, SendEmailError
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 oauth2 = Depends(oauth2_scheme)
@@ -31,12 +33,15 @@ google_sso = GoogleSSO(
 
 
 def create_access_token(data: dict):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_TIME)
-    to_encode.update({"exp": expire})
-
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    try:
+        to_encode = data.copy()
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_TIME)
+        to_encode.update({"exp": expire})
+        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+        return encoded_jwt
+    except JWTError as e:
+        print(f"Exception: {e}")
+        raise CreateError from e
 
 
 def verify_access_token(token: str, credentials_exception):
@@ -98,17 +103,25 @@ async def send_mail(email: dto_misc.EmailList, subject_template: str, template: 
 
 async def send_verification_mail(user: dto_users.UserResponse, token: int):
     verification_url = f"{settings.url}/users/verify-email?token={token}"
-    await send_mail(
-        email=user.email,
-        subject_template="Verify Email",
-        template=f"Click the following link to verify your email: {verification_url}",
-    )
+    try:
+        await send_mail(
+            email=user.email,
+            subject_template="Verify Email",
+            template=f"Click the following link to verify your email: {verification_url}",
+        )
+    except SMTPDataError as e:
+        print(f"Exception: {e}")
+        raise SendEmailError from e
 
 
 async def send_reset_password_mail(user: dto_users.UserResponse, token: int):
     reset_password_url = f"{settings.url}/users/{user.id}/reset-password?token={token}"
-    await send_mail(
-        email=user.email,
-        subject_template="Reset Password",
-        template=f"Click the following link to reset your password: {reset_password_url}",
-    )
+    try:
+        await send_mail(
+            email=user.email,
+            subject_template="Reset Password",
+            template=f"Click the following link to reset your password: {reset_password_url}",
+        )
+    except SMTPDataError as e:
+        print(f"Exception: {e}")
+        raise SendEmailError from e
