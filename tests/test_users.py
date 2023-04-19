@@ -15,7 +15,9 @@ def test_create_user(client):
     response = client.post(
         "/users/", json={"email": "yahya.todolist@gmail.com", "password": "hello"}
     )
-    new_user = dto_users.UserResponse(**response.json())
+    json = response.json()
+    user = json["data"]["user"]
+    new_user = dto_users.UserResponse(**user)
     assert new_user.email == "yahya.todolist@gmail.com"
     assert response.status_code == 201
 
@@ -30,7 +32,9 @@ def test_update_user(authorized_client, test_user):
             "last_name": "world",
         },
     )
-    new_user = dto_users.UserResponse(**response.json())
+    json = response.json()
+    user = json["data"]["user"]
+    new_user = dto_users.UserResponse(**user)
     assert new_user.email == "yahya.todolist@gmail.com"
     assert response.status_code == 200
 

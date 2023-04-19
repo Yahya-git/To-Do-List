@@ -23,10 +23,10 @@ def false_token(token: int, db: Session):
     now_local = datetime.now(local_tz)
     try:
         verification_token = get_verification_token(db, token=token, id=None)
-        if not verification_token or verification_token.expires_at < now_local:
+        if verification_token.expires_at < now_local:
             return True
     except GetError:
-        pass
+        return True
 
 
 def max_tasks_reached(

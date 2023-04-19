@@ -45,7 +45,8 @@ def test_user_login(client, session):
     user_data = {"email": "yahya.19of99@gmail.com", "password": "hello"}
     response = client.post("/users/", json=user_data)
     assert response.status_code == 201
-    user = response.json()
+    json = response.json()
+    user = json["data"]["user"]
     session.query(users.User).filter(users.User.email == user_data["email"]).update(
         {"is_verified": True}
     )
@@ -59,7 +60,8 @@ def test_user(client, session):
     user_data = {"email": "yahya.19of99@gmail.com", "password": "hello"}
     response = client.post("/users/", json=user_data)
     assert response.status_code == 201
-    user = response.json()
+    json = response.json()
+    user = json["data"]["user"]
     session.query(users.User).filter(users.User.email == user_data["email"]).update(
         {"is_verified": True}
     )
