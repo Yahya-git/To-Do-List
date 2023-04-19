@@ -1,20 +1,14 @@
-import logging
 import os
-from logging.handlers import RotatingFileHandler
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.logger import setup_logger
+
 from .controller import auth, reports, tasks, users
 from .handler import scheduler
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-file_handler = RotatingFileHandler("app.log", maxBytes=10000000, backupCount=5)
-file_handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
+logger = setup_logger()
 
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
@@ -27,27 +21,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# @app.middleware("http")
-# async def log_request(request: Request, call_next):
-#     logger.info(f'{request.method} {request.url}')
-#     req_body = b""
-#     async for chunk in request.stream():
-#         req_body += chunk
-#     logger.info(f'Request body: {req_body}')
-#     response = await call_next(request)
-#     logger.info(f'Status code: {response.status_code}')
-#     res_body = b""
-#     async for chunk in response.body_iterator:
-#         res_body += chunk
-#     logger.info(f'Response body: {res_body}')
-#     return Response(
-#         content=res_body,
-#         status_code=response.status_code,
-#         headers=dict(response.headers),
-#         media_type=response.media_type
-#     )
 
 
 async def set_body(request: Request, body: bytes):
