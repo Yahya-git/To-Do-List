@@ -7,11 +7,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.functions import coalesce
 
-from src.dtos.dto_users import (
-    CreateUserRequest,
-    UpdateUserRequest,
-    UpdateUserRestricted,
-)
 from src.exceptions import (
     CreateError,
     DeleteError,
@@ -19,17 +14,14 @@ from src.exceptions import (
     GetError,
     UpdateError,
 )
-from src.handler.utils import hash_password
 from src.models.users import User, Verification
 from src.repository import checks
 
 
-def create_user(user_data: CreateUserRequest, db: Session):
-    if checks.is_email_same(user_data, db):
+def create_user(user: User, db: Session):
+    if checks.is_email_same(user, db):
         raise DuplicateEmailError
     try:
-        user_data.password = hash_password(user_data.password)
-        user = User(**user_data.dict())
         db.add(user)
         db.commit()
         return user
@@ -38,16 +30,16 @@ def create_user(user_data: CreateUserRequest, db: Session):
         raise CreateError from e
 
 
-def update_user(user_id: int, user_data: UpdateUserRequest, db: Session):
+def update_user(user_id: int, user: User, db: Session):
     query = (
         User.__table__.update()
         .returning("*")
         .where(User.__table__.c.id == user_id)
         .values(
-            email=coalesce(user_data.email, User.__table__.c.email),
-            first_name=coalesce(user_data.first_name, User.__table__.c.first_name),
-            last_name=coalesce(user_data.last_name, User.__table__.c.last_name),
-            password=coalesce(user_data.password, User.__table__.c.password),
+            email=coalesce(user.email, User.__table__.c.email),
+            first_name=coalesce(user.first_name, User.__table__.c.first_name),
+            last_name=coalesce(user.last_name, User.__table__.c.last_name),
+            password=coalesce(user.password, User.__table__.c.password),
         )
     )
     user = db.execute(query).fetchone()
@@ -57,12 +49,17 @@ def update_user(user_id: int, user_data: UpdateUserRequest, db: Session):
     return user
 
 
-def update_user_restricted(user_id: int, user_data: UpdateUserRestricted, db: Session):
-    user = (
-        db.query(User)
-        .filter(User.id == user_id)
-        .update(user_data.dict(exclude_unset=True), synchronize_session=False)
+def update_user_restricted(user_id: int, user: User, db: Session):
+    query = (
+        User.__table__.update()
+        .returning("*")
+        .where(User.__table__.c.id == user_id)
+        .values(
+            is_verified=coalesce(user.is_verified, User.__table__.c.is_verified),
+            is_oauth=coalesce(user.is_oauth, User.__table__.c.is_oauth),
+        )
     )
+    user = db.execute(query).fetchone()
     if not user:
         raise UpdateError
     db.commit()

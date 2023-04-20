@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql.functions import coalesce
 
 from src.config import settings
-from src.dtos.dto_tasks import CreateTaskRequest, UpdateTaskRequest
 from src.exceptions import (
     CreateError,
     DeleteError,
@@ -19,11 +18,10 @@ from src.models.tasks import Attachment, Task
 from src.repository import checks
 
 
-def create_task(id, task_data: CreateTaskRequest, db: Session):
+def create_task(id, task: Task, db: Session):
     if checks.max_tasks_reached(db, id):
         raise MaxTasksReachedError
     try:
-        task = Task(user_id=id, **task_data.dict())
         db.add(task)
         db.commit()
         return task
@@ -32,19 +30,17 @@ def create_task(id, task_data: CreateTaskRequest, db: Session):
         raise CreateError from e
 
 
-def update_task(task_id: int, task_data: UpdateTaskRequest, db: Session, user_id: int):
+def update_task(task_id: int, task: Task, db: Session, user_id: int):
     query = (
         Task.__table__.update()
         .returning("*")
         .where(Task.__table__.c.id == task_id, Task.__table__.c.user_id == user_id)
         .values(
-            title=coalesce(task_data.title, Task.__table__.c.title),
-            description=coalesce(task_data.description, Task.__table__.c.description),
-            due_date=coalesce(task_data.due_date, Task.__table__.c.due_date),
-            is_completed=coalesce(
-                task_data.is_completed, Task.__table__.c.is_completed
-            ),
-            completed_at=task_data.completed_at,
+            title=coalesce(task.title, Task.__table__.c.title),
+            description=coalesce(task.description, Task.__table__.c.description),
+            due_date=coalesce(task.due_date, Task.__table__.c.due_date),
+            is_completed=coalesce(task.is_completed, Task.__table__.c.is_completed),
+            completed_at=task.completed_at,
         )
     )
     updated_task = db.execute(query).fetchone()

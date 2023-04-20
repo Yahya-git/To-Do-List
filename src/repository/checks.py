@@ -3,13 +3,13 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
-from src.dtos import dto_users
 from src.exceptions import GetError
+from src.models.users import User
 from src.repository.tasks import get_max_tasks
 from src.repository.users import get_user, get_verification_token
 
 
-def is_email_same(user: dto_users.UserResponse, db: Session):
+def is_email_same(user: User, db: Session):
     try:
         user_check = get_user(db, user_id=None, email=user.email)
         if user_check:

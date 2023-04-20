@@ -14,15 +14,17 @@ from src.exceptions import (
     MaxTasksReachedError,
     UpdateError,
 )
+from src.models.tasks import Task
 from src.repository import tasks as repository
 
 
 def create_task(
-    task: dto_tasks.CreateTaskRequest,
+    task_data: dto_tasks.CreateTaskRequest,
     db: Session,
     current_user: int,
 ):
     try:
+        task = Task(user_id=current_user.id, **task_data.dict())
         new_task = repository.create_task(current_user.id, task, db)
         return new_task
     except MaxTasksReachedError:
@@ -39,17 +41,18 @@ def create_task(
 
 def update_task(
     id: int,
-    task: dto_tasks.UpdateTaskRequest,
+    task_data: dto_tasks.UpdateTaskRequest,
     db: Session,
     current_user: int,
 ):
     local_tz = ZoneInfo("Asia/Karachi")
     now_local = datetime.now(local_tz)
-    if task.is_completed is True:
-        task.completed_at = now_local
-    if task.is_completed is False:
-        task.completed_at = None
+    if task_data.is_completed is True:
+        task_data.completed_at = now_local
+    if task_data.is_completed is False:
+        task_data.completed_at = None
     try:
+        task = Task(**task_data.dict())
         updated_task = repository.update_task(id, task, db, current_user.id)
         return updated_task
     except UpdateError:

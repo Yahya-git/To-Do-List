@@ -19,12 +19,15 @@ from src.exceptions import (
     UpdateError,
 )
 from src.handler import utils
+from src.models.users import User
 from src.repository import checks
 from src.repository import users as repository
 
 
-async def create_user(user: dto_users.CreateUserRequest, db: Session):
+async def create_user(user_data: dto_users.CreateUserRequest, db: Session):
     try:
+        user_data.password = utils.hash_password(user_data.password)
+        user = User(**user_data.dict())
         new_user = repository.create_user(user, db)
     except DuplicateEmailError:
         raise HTTPException(
@@ -55,7 +58,7 @@ async def create_user(user: dto_users.CreateUserRequest, db: Session):
 
 async def update_user(
     id: int,
-    user: dto_users.UpdateUserRequest,
+    user_data: dto_users.UpdateUserRequest,
     db: Session,
     current_user: int,
 ):
@@ -64,20 +67,12 @@ async def update_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="not authorized to perform action",
         )
-    if user.email:
-        if checks.is_email_same(user, db):
+    if user_data.email:
+        if checks.is_email_same(user_data, db):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f'{"the new email address cannot be the same as the current email address"}',
+                detail=f'{"this email is already used"}',
             )
-        user_restricted = dto_users.UpdateUserRestricted(is_verified=False)
-        try:
-            repository.update_user_restricted(id, user_restricted, db)
-        except UpdateError:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f'{"message: something went wrong while updating a user"}',
-            ) from None
         try:
             token = repository.create_verification_token(id, db)
         except CreateError:
@@ -86,15 +81,24 @@ async def update_user(
                 detail=f'{"message: something went wrong while creating a token"}',
             ) from None
         try:
-            await utils.send_verification_mail(user, token.token)
+            await utils.send_verification_mail(user_data, token.token)
         except SendEmailError:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f'{"message: something went wrong while sending an email"}',
             ) from None
-    if user.password:
-        user.password = utils.hash_password(user.password)
+        user_restricted = User(is_verified=False)
+        try:
+            repository.update_user_restricted(id, user_restricted, db)
+        except UpdateError:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f'{"message: something went wrong while updating a user"}',
+            ) from None
+    if user_data.password:
+        user_data.password = utils.hash_password(user_data.password)
     try:
+        user = User(**user_data.dict())
         updated_user = repository.update_user(id, user, db)
     except UpdateError:
         raise HTTPException(
