@@ -8,15 +8,15 @@ from sqlalchemy.sql.functions import coalesce
 
 from src.config import settings
 from src.dtos.dto_tasks import CreateTaskRequest, UpdateTaskRequest
-from src.models.tasks import Attachment, Task
-from src.repository import checks
-from src.repository.exceptions import (
+from src.exceptions import (
     CreateError,
     DeleteError,
     GetError,
     MaxTasksReachedError,
     UpdateError,
 )
+from src.models.tasks import Attachment, Task
+from src.repository import checks
 
 
 def create_task(id, task_data: CreateTaskRequest, db: Session):

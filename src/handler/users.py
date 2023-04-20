@@ -10,10 +10,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from src.dtos import dto_users
-from src.handler import utils
-from src.repository import checks
-from src.repository import users as repository
-from src.repository.exceptions import (
+from src.exceptions import (
     CreateError,
     DeleteError,
     DuplicateEmailError,
@@ -21,6 +18,9 @@ from src.repository.exceptions import (
     SendEmailError,
     UpdateError,
 )
+from src.handler import utils
+from src.repository import checks
+from src.repository import users as repository
 
 
 async def create_user(user: dto_users.CreateUserRequest, db: Session):

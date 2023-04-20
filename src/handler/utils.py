@@ -12,8 +12,8 @@ from sqlalchemy.orm import Session
 from src.config import settings
 from src.database import get_db
 from src.dtos import dto_misc, dto_users
+from src.exceptions import CreateError, SendEmailError
 from src.models import users
-from src.repository.exceptions import CreateError, SendEmailError
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 oauth2 = Depends(oauth2_scheme)

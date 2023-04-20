@@ -1,8 +1,8 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from src.exceptions import NoCompleteTasksError
 from src.repository import reports as repository
-from src.repository.exceptions import NoCompleteTasksError
 
 
 def count_tasks(db: Session, current_user: int):

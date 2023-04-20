@@ -1,7 +1,7 @@
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from src.repository.exceptions import NoCompleteTasksError
+from src.exceptions import NoCompleteTasksError
 
 
 def get_count_of_tasks(id, db: Session):

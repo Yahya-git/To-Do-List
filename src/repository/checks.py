@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.orm import Session
 
 from src.dtos import dto_users
-from src.repository.exceptions import GetError
+from src.exceptions import GetError
 from src.repository.tasks import get_max_tasks
 from src.repository.users import get_user, get_verification_token
 

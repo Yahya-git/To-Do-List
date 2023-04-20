@@ -12,16 +12,16 @@ from src.dtos.dto_users import (
     UpdateUserRequest,
     UpdateUserRestricted,
 )
-from src.handler.utils import hash_password
-from src.models.users import User, Verification
-from src.repository import checks
-from src.repository.exceptions import (
+from src.exceptions import (
     CreateError,
     DeleteError,
     DuplicateEmailError,
     GetError,
     UpdateError,
 )
+from src.handler.utils import hash_password
+from src.models.users import User, Verification
+from src.repository import checks
 
 
 def create_user(user_data: CreateUserRequest, db: Session):

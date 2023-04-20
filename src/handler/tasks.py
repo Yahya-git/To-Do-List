@@ -7,14 +7,14 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from src.dtos import dto_tasks
-from src.repository import tasks as repository
-from src.repository.exceptions import (
+from src.exceptions import (
     CreateError,
     DeleteError,
     GetError,
     MaxTasksReachedError,
     UpdateError,
 )
+from src.repository import tasks as repository
 
 
 def create_task(
