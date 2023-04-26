@@ -1,5 +1,6 @@
 import os
 
+import sqltap
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -53,6 +54,15 @@ async def app_entry(request: Request, call_next):
         headers=dict(response.headers),
         media_type=response.media_type,
     )
+
+
+@app.middleware("http")
+async def add_sql_tap(request: Request, call_next):
+    profiler = sqltap.start()
+    response = await call_next(request)
+    statistics = profiler.collect()
+    sqltap.report(statistics, "report.txt", report_format="text")
+    return response
 
 
 app.include_router(users.router)

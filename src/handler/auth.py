@@ -49,7 +49,9 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=f'{"invalid credentials"}'
         )
     try:
-        access_token = utils.create_access_token(data={"user_email": user.email})
+        access_token = utils.create_access_token(
+            data={"user_email": user.email, "user_id": user.id}
+        )
     except CreateError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -70,7 +72,9 @@ def oauth_login(
             detail=f'{"something went wrong while retrieving a user"}',
         ) from None
     try:
-        access_token = utils.create_access_token(data={"user_email": user.email})
+        access_token = utils.create_access_token(
+            data={"user_email": user.email, "user_id": user.id}
+        )
     except CreateError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

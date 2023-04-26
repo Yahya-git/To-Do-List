@@ -22,9 +22,21 @@ def create_task(id, task: Task, db: Session):
     if checks.max_tasks_reached(db, id):
         raise MaxTasksReachedError
     try:
-        db.add(task)
+        query = (
+            Task.__table__.insert()
+            .returning("*")
+            .values(
+                title=task.title,
+                description=task.description,
+                due_date=task.due_date,
+                is_completed=task.is_completed,
+                completed_at=task.completed_at,
+                user_id=task.user_id,
+            )
+        )
+        new_task = db.execute(query).fetchone()
         db.commit()
-        return task
+        return new_task
     except SQLAlchemyError as e:
         print(f"Exception: {e}")
         raise CreateError from e
@@ -125,9 +137,18 @@ def create_file(task_id: int, file_name: str, file_data: bytes, db: Session):
     attachment = Attachment(
         task_id=task_id, file_attachment=file_data, file_name=file_name
     )
-    db.add(attachment)
+    query = (
+        Attachment.__table__.insert()
+        .returning("*")
+        .values(
+            task_id=attachment.task_id,
+            file_attachment=attachment.file_attachment,
+            file_name=attachment.file_name,
+        )
+    )
+    new_file = db.execute(query).fetchone()
     db.commit()
-    return attachment
+    return new_file
 
 
 def get_file(file_id: int, task_id: int, db: Session):

@@ -72,7 +72,7 @@ def test_user(client, session):
 
 @pytest.fixture
 def token(test_user):
-    return create_access_token({"user_email": test_user.email})
+    return create_access_token({"user_email": test_user.email, "user_id": test_user.id})
 
 
 @pytest.fixture

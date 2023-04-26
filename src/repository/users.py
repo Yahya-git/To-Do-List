@@ -22,9 +22,19 @@ def create_user(user: User, db: Session):
     if checks.is_email_same(user, db):
         raise DuplicateEmailError
     try:
-        db.add(user)
+        query = (
+            User.__table__.insert()
+            .returning("*")
+            .values(
+                email=user.email,
+                first_name=user.first_name,
+                last_name=user.last_name,
+                password=user.password,
+            )
+        )
+        new_user = db.execute(query).fetchone()
         db.commit()
-        return user
+        return new_user
     except SQLAlchemyError as e:
         print(f"Exception: {e}")
         raise CreateError from e
@@ -76,7 +86,8 @@ def get_user(db: Session, user_id: Optional[int], email: Optional[str]):
 def create_verification_token(id: int, db: Session):
     try:
         token = get_verification_token(db, token=None, id=id)
-        delete_verification_token(token.token, db)
+        if token:
+            delete_verification_token(token.token, db)
     except GetError:
         pass
     except DeleteError:
@@ -88,21 +99,35 @@ def create_verification_token(id: int, db: Session):
             token=token,
             expires_at=datetime.now() + timedelta(hours=24),
         )
-        db.add(verification_token)
+        query = (
+            Verification.__table__.insert()
+            .returning("*")
+            .values(
+                user_id=verification_token.user_id,
+                token=verification_token.token,
+                expires_at=verification_token.expires_at,
+            )
+        )
+        new_token = db.execute(query).fetchone()
         db.commit()
-        return verification_token
+        return new_token
     except SQLAlchemyError as e:
         print(f"Exception: {e}")
         raise CreateError from e
 
 
 def delete_verification_token(token: int, db: Session):
-    token_data = db.query(Verification).filter(Verification.token == token).first()
-    db.query(Verification).filter(Verification.token == token).delete()
-    if not token_data:
+    query = (
+        Verification.__table__.delete()
+        .returning("*")
+        .where(Verification.__table__.c.token == token)
+    )
+    deleted_token = db.execute(query).fetchone()
+    db.commit()
+    if not deleted_token:
         raise DeleteError
     db.commit()
-    return token_data
+    return deleted_token
 
 
 def get_verification_token(db: Session, token: Optional[int], id: Optional[int]):

@@ -23,6 +23,7 @@ def test_create_tasks(
         f'{"/tasks/"}', json={"title": title, "description": description}
     )
     json = response.json()
+    print(json)
     task = json["data"]["task"]
     print(response.json())
     created_post = dto_tasks.TaskResponse(**task)

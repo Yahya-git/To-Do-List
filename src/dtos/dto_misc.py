@@ -91,3 +91,4 @@ class TokenResponse(BaseModel):
 
 class TokenData(BaseModel):
     email: Optional[EmailStr] = None
+    id: Optional[int] = None

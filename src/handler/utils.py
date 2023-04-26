@@ -7,17 +7,13 @@ from fastapi_mail import ConnectionConfig, FastMail, MessageSchema
 from fastapi_sso.sso.google import GoogleSSO
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from sqlalchemy.orm import Session
 
 from src.config import settings
-from src.database import get_db
 from src.dtos import dto_misc, dto_users
 from src.exceptions import CreateError, SendEmailError
-from src.models import users
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 oauth2 = Depends(oauth2_scheme)
-get_db_session = Depends(get_db)
 
 SECRET_KEY = settings.secret_key
 ALGORITHM = settings.algorithm
@@ -47,26 +43,23 @@ def create_access_token(data: dict):
 def verify_access_token(token: str, credentials_exception):
     try:
         decoded_jwt = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        id: int = decoded_jwt.get("user_id")
         email: str = decoded_jwt.get("user_email")
         if email is None:
             raise credentials_exception
-        token_data = dto_misc.TokenData(email=email)
+        token_data = dto_misc.TokenData(email=email, id=id)
     except JWTError:
         raise credentials_exception
     return token_data
 
 
-def validate_user(
-    token: str = oauth2,
-    db: Session = get_db_session,
-):
+def validate_user(token: str = oauth2):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail=f'{"could not validate credentials"}',
         headers={"WWW-Authenticate": "Bearer"},
     )
-    token = verify_access_token(token, credentials_exception)
-    user = db.query(users.User).filter(users.User.email == token.email).first()
+    user = verify_access_token(token, credentials_exception)
     return user
 
 
