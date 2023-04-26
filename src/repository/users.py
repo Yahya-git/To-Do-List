@@ -3,7 +3,6 @@ from random import randint
 from typing import Optional
 
 from sqlalchemy import or_
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.functions import coalesce
 
@@ -35,7 +34,7 @@ def create_user(user: User, db: Session):
         new_user = db.execute(query).fetchone()
         db.commit()
         return new_user
-    except SQLAlchemyError as e:
+    except Exception as e:
         print(f"Exception: {e}")
         raise CreateError from e
 
@@ -111,7 +110,7 @@ def create_verification_token(id: int, db: Session):
         new_token = db.execute(query).fetchone()
         db.commit()
         return new_token
-    except SQLAlchemyError as e:
+    except Exception as e:
         print(f"Exception: {e}")
         raise CreateError from e
 
