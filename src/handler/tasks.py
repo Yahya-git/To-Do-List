@@ -60,6 +60,11 @@ def update_task(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"not authorized to perform action or task with id: {id} does not exist",
         ) from None
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'{"something went wrong while updating the task"}',
+        ) from None
 
 
 def delete_task(
@@ -74,6 +79,11 @@ def delete_task(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"not authorized to perform action or task with id: {id} does not exist",
+        ) from None
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'{"something went wrong while deleting the task"}',
         ) from None
 
 
@@ -90,6 +100,11 @@ def get_tasks(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f'{"there are no tasks"}'
         ) from None
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'{"something went wrong while retrieving the tasks"}',
+        ) from None
 
 
 def get_task(
@@ -105,6 +120,11 @@ def get_task(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"not authorized to perform action or task with id: {id} does not exist",
         ) from None
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'{"something went wrong while retrieving the task"}',
+        ) from None
 
 
 async def upload_file(
@@ -119,6 +139,11 @@ async def upload_file(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"not authorized to perform action or task with id: {task_id} does not exist",
+        ) from None
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'{"something went wrong while retrieving the task"}',
         ) from None
     file_name = file.filename
     file_data = await file.read()
@@ -149,6 +174,11 @@ async def download_file(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"file with id: {file_id} not found",
+        ) from None
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'{"something went wrong while retrieving the file"}',
         ) from None
     file_name = file.file_name
     file_data = file.file_attachment
