@@ -71,6 +71,19 @@ async def get_tasks(
     return {"status": "success", "data": {"tasks": tasks}}
 
 
+@router.get(
+    "/similar",
+    status_code=status.HTTP_200_OK,
+    response_model=dto_misc.TaskMultipleResponse[dto_tasks.SimilarTaskResponse],
+)
+async def get_similar_tasks(
+    db: Session = get_db_session,
+    current_user: int = validated_user,
+):
+    tasks = handler.get_similar_tasks(db, current_user)
+    return {"status": "success", "data": {"tasks": tasks}}
+
+
 # Get Task Endpoint
 @router.get(
     "/{id}",

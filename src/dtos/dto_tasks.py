@@ -35,3 +35,12 @@ class TaskResponse(TaskBase):
 
     class Config:
         orm_mode = True
+
+
+class SimilarTaskResponse(BaseModel):
+    title: str
+    description: Optional[str]
+    count: int
+
+    class Config:
+        orm_mode = True

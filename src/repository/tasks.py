@@ -114,6 +114,16 @@ def get_max_tasks(id: int, db: Session):
     return max_tasks
 
 
+def get_similar_tasks(user_id: int, db: Session):
+    similar_tasks = (
+        db.query(Task.title, Task.description, func.count("*").label("count"))
+        .filter(Task.user_id == user_id)
+        .group_by(Task.title, Task.description)
+        .having(func.count("*") > 1)
+    ).all()
+    return similar_tasks
+
+
 def all_tasks_due_today(db: Session):
     all_tasks_due_today = (
         db.query(Task).filter(cast(Task.due_date, Date) == date.today()).all()

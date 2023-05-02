@@ -107,6 +107,24 @@ def get_tasks(
         ) from None
 
 
+def get_similar_tasks(
+    db: Session,
+    current_user: int,
+):
+    try:
+        tasks = repository.get_similar_tasks(current_user.id, db)
+        return tasks
+    except GetError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f'{"there are no tasks"}'
+        ) from None
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'{"something went wrong while retrieving the tasks"}',
+        ) from None
+
+
 def get_task(
     id: int,
     db: Session,
