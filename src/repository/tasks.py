@@ -121,6 +121,8 @@ def get_similar_tasks(user_id: int, db: Session):
         .group_by(Task.title, Task.description)
         .having(func.count("*") > 1)
     ).all()
+    if not similar_tasks:
+        raise GetError
     return similar_tasks
 
 

@@ -116,7 +116,8 @@ def get_similar_tasks(
         return tasks
     except GetError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f'{"there are no tasks"}'
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f'{"there are no similar tasks"}',
         ) from None
     except Exception:
         raise HTTPException(
