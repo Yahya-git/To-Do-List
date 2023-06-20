@@ -10,16 +10,21 @@ class UserBase(BaseModel):
     last_name: Optional[str]
 
 
-class UserCreate(UserBase):
+class CreateUserRequest(UserBase):
     password: str
 
 
-class UserUpdate(UserBase):
+class UpdateUserRequest(UserBase):
     email: Optional[EmailStr]
     password: Optional[str]
 
 
-class User(UserBase):
+class UpdateUserRestricted(BaseModel):
+    is_verified: Optional[bool]
+    is_oauth: Optional[bool]
+
+
+class UserResponse(UserBase):
     id: int
     created_at: datetime
     updated_at: datetime

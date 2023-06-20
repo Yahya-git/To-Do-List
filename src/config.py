@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     google_client_id: str
     google_client_secret: str
     redirect_url: str
+    max_tasks: int
+    cache_expiry_time: int
 
     class Config:
         env_file = ".env"

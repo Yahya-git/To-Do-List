@@ -1,0 +1,38 @@
+version: "3.9"
+services:
+  fastapi:
+    container_name: todolist
+    build: .
+    command: bash -c "alembic upgrade head && uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug"
+    volumes:
+      - .:/app
+    restart: always
+    ports:
+      - 8000:8000
+    networks:
+      - todolistnetwork
+    depends_on:
+      - postgres
+  postgres:
+    image: postgres
+    restart: always
+    ports:
+      - 5433:5432
+    networks:
+      - todolistnetwork
+    environment:
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+  redis:
+    image: redis
+    restart: always
+    ports:
+      - 6380:6379
+    networks:
+      - todolistnetwork
+
+networks:
+  todolistnetwork:
+    external: true
+    name: todolistnetwork

@@ -3,3 +3,5 @@ venv/
 .env
 .vscode/
 temp_file
+app.log
+report.txt
